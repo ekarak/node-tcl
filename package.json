@@ -1,6 +1,6 @@
 {
   "name": "tcl",
-  "version": "2.0.0",
+  "version": "2.3.1",
   "description": "Node.js Tcl binding",
   "main": "index.js",
   "gypfile": true,
@@ -14,25 +14,26 @@
   "keywords": [
     "tcl"
   ],
-  "author": "Uditha Atukorala <udi@geniusse.com>",
+  "author": "Uditha Atukorala <ua@nuked.zone>",
   "license": "ISC",
   "repository": "nukedzn/node-tcl",
   "files": [
     "binding.gyp",
     "index.js",
-    "include",
+    "gyp",
     "lib",
     "src"
   ],
   "dependencies": {
     "bindings": "^1.2.1",
-    "nan": "^1.8.4"
+    "nan": "^2.1.0"
   },
   "devDependencies": {
     "chai": "^3.1.0",
-    "coveralls": "^2.11.2",
-    "istanbul": "^0.3.15",
+    "coveralls": "^2.11.4",
+    "istanbul": "^0.4.0",
     "jshint": "^2.8.0",
-    "mocha": "^2.2.5"
+    "mocha": "^2.3.3",
+    "sinon": "^1.17.2"
   }
 }

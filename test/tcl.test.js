@@ -3,6 +3,8 @@
 'use strict';
 
 var expect = require( 'chai' ).expect;
+var path   = require( 'path' );
+var sinon  = require( 'sinon' );
 var tcl    = require( '../' );
 
 
@@ -19,6 +21,11 @@ describe( 'tcl', function () {
 	it( 'should cache Tcl version', function () {
 		tcl._version = '1.0-beta';
 		expect( tcl.version() ).to.equal( '1.0-beta' );
+	} );
+
+	it( 'should inject tcl commands as javascript functions', function () {
+		expect( tcl.$.info ).to.be.a.method;
+		expect( tcl.$.set ).to.be.a.method;
 	} );
 
 
@@ -142,7 +149,7 @@ describe( 'tcl', function () {
 			tcl.queue( 'set x 0', function ( err, result ) {
 				expect( err ).to.be.null;
 
-				tcl.queue( 'incr $x', function ( err, result ) {
+				tcl.queue( 'incr x', function ( err, result ) {
 					expect( err ).to.be.null;
 					expect( parseInt( result.data() ) ).to.equal( 1 );
 					done();
@@ -150,6 +157,47 @@ describe( 'tcl', function () {
 			} );
 		} );
 
+	} );
+
+
+	context( 'when executing injected javascript functions', function () {
+		it( 'should pass arguments correctly', function () {
+			var hostname = tcl.$( 'info hostname' ).data();
+			var result = tcl.$.set( 'hostname', '[info hostname]' );
+			expect( result.data() ).to.eql( hostname );
+
+			tcl.$.proc( 'add', '{x y}', '{return [expr {$x + $y}]}' );
+			tcl.$inject();
+
+			result = tcl.$.add( 1, 2 );
+			expect( parseInt( result.data() ) ).to.eql( 3 );
+		} );
+	} );
+
+
+	context( 'when sourcing tcl files', function () {
+		it( 'should update internal tcl command references', function () {
+			tcl.source( path.join( __dirname, 'support/script.tcl' ) );
+			expect( tcl.$.multiply ).to.be.a.method;
+
+			var result = tcl.$.multiply( 5, 10 );
+			expect( parseInt( result.data() ) ).to.eql( 50 );
+		} );
+	} );
+
+
+	context( 'when loading tcl modules', function () {
+		it( 'should update internal tcl command references', function () {
+			sinon.stub( tcl, '$' );
+			sinon.stub( tcl, '$inject' );
+
+			tcl.load( 'libdummy.so' );
+			expect( tcl.$.calledOnce ).to.be.true;
+			expect( tcl.$inject.calledOnce ).to.be.true;
+
+			tcl.$.restore();
+			tcl.$inject.restore();
+		} );
 	} );
 
 } );
