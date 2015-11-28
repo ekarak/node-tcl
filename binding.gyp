@@ -10,7 +10,8 @@
 		{
 			'target_name': 'tcl',
 			'sources': [
-				'src/tclbinding.cpp'
+				'src/tclbinding.cpp',
+				'src/expose.cpp'
 			],
 			'variables': {
 				'tclthreads': '<!(. <(tclconfig) && echo ${TCL_THREADS})',

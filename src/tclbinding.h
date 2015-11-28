@@ -10,10 +10,7 @@
 #include "taskrunner.h"
 #endif
 
-typedef struct {
-	Nan::Callback*                        jsFunc;
-	Nan::FunctionCallbackInfo<v8::Value>* args;
-} JsProxyBinding;
+
 
 class TclBinding : public node::ObjectWrap {
 public:
@@ -40,8 +37,6 @@ private:
 
 };
 
-// map of Javascript functions available to TclBinding
-static std::map<std::string, JsProxyBinding*> _jsExports;
 
 // node addon initialisation
 NODE_MODULE( tcl, TclBinding::init )
