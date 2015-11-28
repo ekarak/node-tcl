@@ -1,6 +1,7 @@
 
 #include "tclbinding.h"
 #include <cstring>
+#include <iostream>
 
 #ifdef HAS_TCL_THREADS
 #include "tclworker.h"
@@ -9,6 +10,7 @@
 #define MSG_NO_TCL_THREADS       "Thread support disabled, please ensure Tcl is compiled with --enable-threads flag set"
 #define MSG_NO_THREAD_SUPPORT    "Thread support disabled, check g++ version for c++11 and/or Tcl thread support"
 
+using namespace v8;
 
 // initialise static vars
 Nan::Persistent< v8::Function > TclBinding::constructor;
@@ -25,8 +27,8 @@ TclBinding::TclBinding() {
 		Nan::ThrowError( "Failed to initialise Tcl interpreter" );
 	}
 
-}
 
+}
 
 TclBinding::~TclBinding() {
 
@@ -42,7 +44,19 @@ TclBinding::~TclBinding() {
 }
 
 
+static void gc_begin(GCType type, GCCallbackFlags flags){
+  std::cout << "GC begins: " << type << std::endl;
+}
+
+static void gc_end(GCType type, GCCallbackFlags flags){
+  std::cout << "GC ends: " << type << std::endl;
+}
+
 void TclBinding::init( v8::Local< v8::Object > exports ) {
+
+	// ekarak: add GC hints
+	v8::V8::AddGCPrologueCallback(&gc_begin);
+	v8::V8::AddGCEpilogueCallback(&gc_end);
 
 	// stack-allocated handle scope
 	Nan::HandleScope scope;
@@ -57,6 +71,7 @@ void TclBinding::init( v8::Local< v8::Object > exports ) {
 	Nan::SetPrototypeMethod( tpl, "cmdSync", cmdSync );
 	Nan::SetPrototypeMethod( tpl, "queue", queue );
 	Nan::SetPrototypeMethod( tpl, "toArray", toArray );
+	Nan::SetPrototypeMethod( tpl, "expose", expose );
 
 	constructor.Reset( tpl->GetFunction() );
 	exports->Set( Nan::New( "TclBinding" ).ToLocalChecked(), tpl->GetFunction() );
@@ -232,3 +247,95 @@ void TclBinding::toArray( const Nan::FunctionCallbackInfo< v8::Value > &info ) {
 }
 
 
+/*
+   dispatch a tcl command invocation to its exposed Javascript equivalent
+*/
+int objCmdProcDispatcher(
+				ClientData clientData, // (JsProxyBinding*)
+				Tcl_Interp *interp,
+				int objc,
+				Tcl_Obj *const objv[])
+{
+
+	printf("objCmdProcDispatcher, interp=%p cmd=%s\n", interp, Tcl_GetString(objv[0]));
+	for (int i = 1; i < objc; i++) {
+		printf("\targ %d == %s\n", i, Tcl_GetString(objv[i]));
+	}
+
+	// bind Tcl arguments ("everything is a string") to the JS function
+	Local < Array > jsFunctionArgs = Nan::New<Array>(objc-1);
+	for ( int i = 1; i < objc; i++ ) {
+		/* todo: parse json args on the fly as JS objects to JS func */
+		Nan::Set(
+			jsFunctionArgs, i - 1,
+			Nan::New<String>( Tcl_GetString( objv[i] ) ).ToLocalChecked()
+		);
+	}
+	Local<Value> args = Local<Value>::Cast(jsFunctionArgs);
+
+	// doo the doo
+	Nan::Callback*  f = ((JsProxyBinding*) clientData)->jsFunc;
+	Local<Value> retv = f->Call( objc, &args);
+
+	printf("\treturn value isEmpty=%d isUndefined=%d\n", retv.IsEmpty(), retv->IsUndefined());
+	if (! (retv.IsEmpty() || retv->IsUndefined()) ) {
+		printf("\t\t==%s==\n", (*String::Utf8Value(retv->ToString())));
+		//Tcl_SetObjResult(interp, retv);
+	}
+
+	// must return TCL_OK, TCL_ERROR, TCL_RETURN, TCL_BREAK, or TCL_CONTINUE.
+
+	return TCL_OK;
+};
+
+/* Tcl_CmdDeleteProc: Procedure to call before cmdName is deleted from the
+* interpreter; allows for command-specific cleanup. If NULL, then no procedure
+* is called before the command is deleted. */
+void objCmdDeleteProcDispatcher(
+ ClientData clientData)
+{
+	printf("objCmdDeleteProcDispatcher\n");
+};
+
+
+/*
+* Javascript: tcl.expose(console.log)
+* exposes the JS function object to Tcl
+* single arg must be a function handle
+*/
+void TclBinding::expose( const Nan::FunctionCallbackInfo< v8::Value > &info ) {
+	// validate input params
+	if ( (info.Length() != 2) || (!info[0]->IsFunction()) || (!info[1]->IsString()) ) {
+		return Nan::ThrowTypeError( "Usage: expose(function, name)" );
+	}
+
+	Handle<Function> fun = Handle<Function>::Cast( info[0] );
+	std::string  cmdname = (*String::Utf8Value( info[1]->ToString() ));
+
+	TclBinding * binding = ObjectWrap::Unwrap< TclBinding >( info.Holder() );
+
+	printf("exposing %s: identityHash=%d to interpreter %p\n",
+			cmdname.c_str(), fun->GetIdentityHash(), binding->_interp);
+
+	JsProxyBinding* jsb = new JsProxyBinding();
+
+	//jsb->jsFunc = Persistent<Function>::New(info.GetIsolate(), *fun);
+	jsb->jsFunc  = new Nan::Callback(fun);
+	//jsb->context = info.Data();
+
+	if (_jsExports.count(cmdname)) {
+		printf("WARNING: overriding %s\n", cmdname.c_str());
+	}
+
+	// add the command
+	Tcl_CreateObjCommand(
+		binding->_interp,
+		cmdname.c_str(),
+		&objCmdProcDispatcher,
+		jsb, // clientData,
+		&objCmdDeleteProcDispatcher
+	);
+
+	_jsExports[cmdname] = jsb;
+
+}

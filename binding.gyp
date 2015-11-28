@@ -1,6 +1,10 @@
 {
+	'make_global_settings': [
+	    ['CXX','/usr/bin/clang++'],
+	    ['LINK','/usr/bin/clang++'],
+	  ],
 	'variables': {
-		'tclconfig%': '<!(tclsh gyp/tclconfig.tcl)'
+		'tclconfig%': '<!(tclsh8.5 gyp/tclconfig.tcl)'
 	},
 	'targets': [
 		{

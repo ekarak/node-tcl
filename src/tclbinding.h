@@ -4,11 +4,16 @@
 
 #include <nan.h>
 #include <tcl.h>
+#include <map>
 
 #if defined(HAS_CXX11) && defined(HAS_TCL_THREADS)
 #include "taskrunner.h"
 #endif
 
+typedef struct {
+	Nan::Callback*                        jsFunc;
+	Nan::FunctionCallbackInfo<v8::Value>* args;
+} JsProxyBinding;
 
 class TclBinding : public node::ObjectWrap {
 public:
@@ -23,6 +28,7 @@ private:
 	static void cmdSync( const Nan::FunctionCallbackInfo< v8::Value > &info );
 	static void queue( const Nan::FunctionCallbackInfo< v8::Value > &info );
 	static void toArray( const Nan::FunctionCallbackInfo< v8::Value > &info );
+	static void expose( const Nan::FunctionCallbackInfo< v8::Value > &info );
 
 	static Nan::Persistent< v8::Function > constructor;
 
@@ -34,9 +40,10 @@ private:
 
 };
 
+// map of Javascript functions available to TclBinding
+static std::map<std::string, JsProxyBinding*> _jsExports;
 
 // node addon initialisation
 NODE_MODULE( tcl, TclBinding::init )
 
 #endif /* !TCLBINDING_H */
-
