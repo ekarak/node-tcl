@@ -264,6 +264,7 @@ void TclBinding::expose( const Nan::FunctionCallbackInfo< v8::Value > &info ) {
 	// get handle to JS function and its Tcl name
 	Handle<Function> fun = Handle<Function>::Cast( info[0] );
 	std::string  cmdname = (*String::Utf8Value( info[1]->ToString() ));
+	Nan::Callback *pf = new Nan::Callback(fun);
 
 	TclBinding * binding = ObjectWrap::Unwrap< TclBinding >( info.Holder() );
 
@@ -271,12 +272,10 @@ void TclBinding::expose( const Nan::FunctionCallbackInfo< v8::Value > &info ) {
 			cmdname.c_str(), fun->GetIdentityHash(), binding->_interp);
 
 	// store it
-	JsProxyBinding* jsb = new JsProxyBinding(cmdname);
-	//jsb->jsFunc = Persistent<Function>::New(info.GetIsolate(), *fun);
-	jsb->jsFunc  = new Nan::Callback(fun);
+	JsProxyBinding* jsb = new JsProxyBinding(cmdname, pf);
 
 	if (_jsExports.count(cmdname)) {
-		printf("WARNING: overriding %s\n", cmdname.c_str());
+		printf("WARNING: expose() is overriding %s\n", cmdname.c_str());
 	}
 	_jsExports[cmdname] = jsb;
 

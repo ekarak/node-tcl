@@ -9,6 +9,8 @@ int objCmdProcDispatcher(
 				int objc,
 				Tcl_Obj *const objv[])
 {
+
+
 	// get the JS proxy binding
 	JsProxyBinding* jsb = ((JsProxyBinding*) clientData);
 
@@ -30,15 +32,22 @@ int objCmdProcDispatcher(
 	Local<Value> args = Local<Value>::Cast(jsFunctionArgs);
 
 	// doo the doo
-	Nan::Callback*  f = jsb->jsFunc;
-	Local<Value> retv = f->Call( objc, &args);
+	Nan::TryCatch tc;
+	Nan::Callback*   f = jsb->jsFunc;
+	Local<Value>  retv = f->Call( Nan::GetCurrentContext()->Global(), objc-1, &args );
 
-	printf("\treturn value isEmpty=%d isUndefined=%d\n", retv.IsEmpty(), retv->IsUndefined());
-	if (! (retv.IsEmpty() || retv->IsUndefined()) ) {
-		std::string res(*String::Utf8Value(retv));
-		printf("\t\tResult == %s\n", res.c_str());
-		Tcl_Obj* tclres = Tcl_NewStringObj(res.c_str(), res.size());
-		Tcl_SetObjResult(interp, tclres);
+	if ( tc.HasCaught() ) {
+		printf("EXCEPTION:\n");
+		std::string message(*String::Utf8Value(tc.Message()->Get()));
+		printf("\t %s", message.c_str());
+	} else {
+		printf("\treturn value isEmpty=%d isUndefined=%d\n", retv.IsEmpty(), retv->IsUndefined());
+		if ( !retv.IsEmpty() && !retv->IsUndefined() ) {
+			std::string res(*String::Utf8Value(retv));
+			printf("\t\tResult == %s\n", res.c_str());
+			Tcl_Obj* tclres = Tcl_NewStringObj(res.c_str(), res.size());
+			Tcl_SetObjResult(interp, tclres);
+		}
 	}
 
 	// must return TCL_OK, TCL_ERROR, TCL_RETURN, TCL_BREAK, or TCL_CONTINUE.

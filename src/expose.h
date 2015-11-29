@@ -15,10 +15,10 @@
 using namespace v8;
 
 typedef struct JsProxyBinding {
-	std::string    cmdname;
-	Nan::Callback* jsFunc;
-	// Nan::FunctionCallbackInfo<v8::Value>* args;
-	JsProxyBinding(std::string s) : cmdname(s), jsFunc(NULL) {}
+	std::string   cmdname;
+	Nan::Callback *jsFunc;
+	// perhaps argument info, fetched from jsFunc's prototype?;
+	JsProxyBinding(std::string s, Nan::Callback* cb) : cmdname(s), jsFunc(cb) {}
 } JsProxyBinding;
 
 // map of Javascript functions available to TclBinding

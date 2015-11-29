@@ -16,6 +16,12 @@ tcl.expose(
 	'square'
 );
 
+tcl.expose(
+	function() { throw "Danger, Will Robinson!"; }, 
+	'puke'
+);
+
 tcl.cmdSync( "consolelog0" );
 tcl.cmdSync( "consolelog1 world" );
 tcl.cmdSync( 'puts "I think that 8*8 == [square 8]"' );
+tcl.cmdSync( 'puke' );
