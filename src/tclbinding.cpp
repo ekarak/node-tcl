@@ -264,23 +264,25 @@ void TclBinding::expose( const Nan::FunctionCallbackInfo< v8::Value > &info ) {
 	// get handle to JS function and its Tcl name
 	Handle<Function> fun = Handle<Function>::Cast( info[0] );
 	std::string  cmdname = (*String::Utf8Value( info[1]->ToString() ));
-	Nan::Callback *pf = new Nan::Callback(fun);
 
 	TclBinding * binding = ObjectWrap::Unwrap< TclBinding >( info.Holder() );
 
 	printf("exposing %s: identityHash=%d to interpreter %p\n",
 			cmdname.c_str(), fun->GetIdentityHash(), binding->_interp);
 
+	//
+	Persistent<Function, CopyablePersistentTraits<Function>> pfun(
+		Nan::GetCurrentContext()->GetIsolate(), info[0].As<Function>());
+
 	// store it
-	JsProxyBinding* jsb = new JsProxyBinding(cmdname, pf);
+	JsProxyBinding* jsb = new JsProxyBinding(cmdname, &pfun);
 
 	if (_jsExports.count(cmdname)) {
 		printf("WARNING: expose() is overriding %s\n", cmdname.c_str());
 	}
-	_jsExports[cmdname] = jsb;
 
 	// add the command
-	Tcl_CreateObjCommand(
+	jsb->tclcmd = Tcl_CreateObjCommand(
 		binding->_interp,
 		cmdname.c_str(),
 		&objCmdProcDispatcher,
@@ -288,4 +290,5 @@ void TclBinding::expose( const Nan::FunctionCallbackInfo< v8::Value > &info ) {
 		&objCmdDeleteProcDispatcher
 	);
 
+	_jsExports[cmdname] = jsb;
 }

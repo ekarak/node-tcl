@@ -9,8 +9,6 @@ int objCmdProcDispatcher(
 				int objc,
 				Tcl_Obj *const objv[])
 {
-
-
 	// get the JS proxy binding
 	JsProxyBinding* jsb = ((JsProxyBinding*) clientData);
 
@@ -33,26 +31,56 @@ int objCmdProcDispatcher(
 
 	// doo the doo
 	Nan::TryCatch tc;
-	Nan::Callback*   f = jsb->jsFunc;
-	Local<Value>  retv = f->Call( Nan::GetCurrentContext()->Global(), objc-1, &args );
+	// rematerialize handle to JS function
+	v8::Local<v8::Function> function = v8::Local<v8::Function>::New(
+		Nan::GetCurrentContext()->GetIsolate(), jsb->jsFunc
+	);
+	// do the doo
+	Local<Value>  retv = function->Call( Nan::GetCurrentContext()->Global(), objc-1, &args );
 
 	if ( tc.HasCaught() ) {
-		printf("EXCEPTION:\n");
-		std::string message(*String::Utf8Value(tc.Message()->Get()));
-		printf("\t %s", message.c_str());
+
+		// oops, exception raised from V8 while in JS land
+		Local<Message> msg = tc.Message();
+		std::string msgtext(*String::Utf8Value(msg->Get()));
+
+		Tcl_SetObjResult(interp, Tcl_NewStringObj(msgtext.c_str(), -1));
+
+		// pass back the Return Options with the stack details.
+		String::Utf8Value filename(msg->GetScriptResourceName());
+		String::Utf8Value sourceline(msg->GetSourceLine());
+		int linenum = msg->GetLineNumber();
+
+		Tcl_SetErrorCode(interp, *sourceline, NULL);
+		Tcl_AddErrorInfo(interp, "\n   occurred in file ");
+		Tcl_AddErrorInfo(interp, *filename);
+		Tcl_AddErrorInfo(interp, " line ");
+		Tcl_AppendObjToErrorInfo(interp, Tcl_NewIntObj(linenum));
+
+		// append the full stack trace if it was present.
+		MaybeLocal<Value> stack_trace = tc.StackTrace();
+		if ( !stack_trace.IsEmpty() ) {
+			String::Utf8Value stmsg(stack_trace.ToLocalChecked());
+			Tcl_AddErrorInfo(interp, *stmsg);
+		}
+
+		return TCL_ERROR;
+
 	} else {
-		printf("\treturn value isEmpty=%d isUndefined=%d\n", retv.IsEmpty(), retv->IsUndefined());
+
+		//printf("\treturn value isEmpty=%d isUndefined=%d\n", retv.IsEmpty(), retv->IsUndefined());
 		if ( !retv.IsEmpty() && !retv->IsUndefined() ) {
 			std::string res(*String::Utf8Value(retv));
 			printf("\t\tResult == %s\n", res.c_str());
 			Tcl_Obj* tclres = Tcl_NewStringObj(res.c_str(), res.size());
 			Tcl_SetObjResult(interp, tclres);
 		}
+		return TCL_RETURN;
 	}
-
+	return TCL_OK;
 	// must return TCL_OK, TCL_ERROR, TCL_RETURN, TCL_BREAK, or TCL_CONTINUE.
 
-	return TCL_OK;
+
 };
 
 /* Tcl_CmdDeleteProc: Procedure to call before cmdName is deleted from the
@@ -61,7 +89,10 @@ int objCmdProcDispatcher(
 void objCmdDeleteProcDispatcher(
  ClientData clientData)
 {
-	std::string& cmdname = ((JsProxyBinding*) clientData)->cmdname;
+	JsProxyBinding*  jsb = ((JsProxyBinding*) clientData);
+	std::string& cmdname = jsb->cmdname;
 	printf("objCmdDeleteProcDispatcher(%s)\n", cmdname.c_str());
+	// mark the persistent function handle as independent so that GC can pick this up
+	jsb->jsFunc.MarkIndependent();
 	_jsExports.erase(cmdname);
 };
