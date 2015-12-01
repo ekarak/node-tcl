@@ -250,38 +250,35 @@ void TclBinding::toArray( const Nan::FunctionCallbackInfo< v8::Value > &info ) {
 
 
 /*
-* Javascript: tcl.expose(console.log)
+* Javascript: tcl.expose( 'name', <javascript closure> )
 * exposes the JS function object to Tcl
-* single arg must be a function handle
 */
 void TclBinding::expose( const Nan::FunctionCallbackInfo< v8::Value > &info ) {
 
 	// validate input params
-	if ( (info.Length() != 2) || (!info[0]->IsFunction()) || (!info[1]->IsString()) ) {
-		return Nan::ThrowTypeError( "Usage: expose(function, name)" );
+	if ( (info.Length() != 2) || (!info[1]->IsFunction()) || (!info[0]->IsString()) ) {
+		return Nan::ThrowTypeError( "Usage: expose(name, function)" );
 	}
 
-	// get handle to JS function and its Tcl name
-	Handle<Function> fun = Handle<Function>::Cast( info[0] );
-	std::string  cmdname = (*String::Utf8Value( info[1]->ToString() ));
-
+	// get Tcl binding
 	TclBinding * binding = ObjectWrap::Unwrap< TclBinding >( info.Holder() );
 
-	printf("exposing %s: identityHash=%d to interpreter %p\n",
+	// get handle to JS function and its Tcl name
+	std::string  cmdname = (*String::Utf8Value( info[0]->ToString() ));
+
+/*	printf("exposing %s: identityHash=%d to interpreter %p\n",
 			cmdname.c_str(), fun->GetIdentityHash(), binding->_interp);
-
-	//
-	Persistent<Function, CopyablePersistentTraits<Function>> pfun(
-		Nan::GetCurrentContext()->GetIsolate(), info[0].As<Function>());
-
-	// store it
-	JsProxyBinding* jsb = new JsProxyBinding(cmdname, &pfun);
-
+*/
 	if (_jsExports.count(cmdname)) {
 		printf("WARNING: expose() is overriding %s\n", cmdname.c_str());
 	}
 
+	// create a copyable persistent handle to this function
+	Persistent<Function, CopyablePersistentTraits<Function>> pfun(
+		Nan::GetCurrentContext()->GetIsolate(), info[1].As<Function>());
+
 	// add the command
+	JsProxyBinding* jsb = new JsProxyBinding(cmdname, &pfun);
 	jsb->tclcmd = Tcl_CreateObjCommand(
 		binding->_interp,
 		cmdname.c_str(),
@@ -292,3 +289,4 @@ void TclBinding::expose( const Nan::FunctionCallbackInfo< v8::Value > &info ) {
 
 	_jsExports[cmdname] = jsb;
 }
+

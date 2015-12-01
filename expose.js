@@ -1,29 +1,29 @@
 var binding = require( 'bindings' )( 'tcl' );
 var tcl     = new binding.TclBinding();
 
-tcl.expose(
-	function() { console.log('hello!') },
-	'consolelog0'
-);
+tcl.expose( 'consolelog0',
+	function() { 
+		console.log('hello!') 
+});
 
-tcl.expose(
-	function(arg1) { console.log('hello ' + arg1 + '!'); },
-	'consolelog1'
-);
+tcl.expose( 'consolelog1', 
+	function(arg1) { 
+		console.log('hello ' + arg1 + '!'); 
+});
 
-tcl.expose(
-	function(n) { return n*n; },
-	'square'
-);
+tcl.expose( 'square',
+	function(n) { 
+		return n*n; 
+});
 
-tcl.expose(
-	function() { throw "Danger, Will Robinson!"; },
-	'puke'
-);
+tcl.expose( 'puke',
+	function() { 
+		throw "Danger, Will Robinson!"; 
+});
 
 tcl.cmdSync( "consolelog0" );
 tcl.cmdSync( "consolelog1 world" );
-tcl.cmdSync( 'puts "I think that 8*8 == [square 8]"' );
+tcl.cmdSync( "set sq8 [square 8]; puts $sq8" );
 tcl.cmdSync( 'if {[catch puke msg]} {puts "Tcl caught JS exception: $msg"}' );
 try {
 	tcl.cmdSync( 'puke' );

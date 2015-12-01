@@ -12,10 +12,10 @@ int objCmdProcDispatcher(
 	// get the JS proxy binding
 	JsProxyBinding* jsb = ((JsProxyBinding*) clientData);
 
-	printf("objCmdProcDispatcher, interp=%p cmd=%s\n", interp, Tcl_GetString(objv[0]));
+	/*printf("objCmdProcDispatcher, interp=%p cmd=%s\n", interp, Tcl_GetString(objv[0]));
 	for (int i = 1; i < objc; i++) {
 		printf("\targ %d == %s\n", i, Tcl_GetString(objv[i]));
-	}
+	}*/
 
 	// bind Tcl arguments ("everything is a string") to the JS function
 	Local < Array > jsFunctionArgs = Nan::New<Array>(objc-1);
@@ -71,11 +71,12 @@ int objCmdProcDispatcher(
 		//printf("\treturn value isEmpty=%d isUndefined=%d\n", retv.IsEmpty(), retv->IsUndefined());
 		if ( !retv.IsEmpty() && !retv->IsUndefined() ) {
 			std::string res(*String::Utf8Value(retv));
-			printf("\t\tResult == %s\n", res.c_str());
+			// printf("\t\tResult == %s\n", res.c_str());
 			Tcl_Obj* tclres = Tcl_NewStringObj(res.c_str(), res.size());
 			Tcl_SetObjResult(interp, tclres);
 		}
 		return TCL_RETURN;
+
 	}
 	return TCL_OK;
 	// must return TCL_OK, TCL_ERROR, TCL_RETURN, TCL_BREAK, or TCL_CONTINUE.
