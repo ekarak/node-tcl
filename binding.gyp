@@ -11,6 +11,7 @@
 			'target_name': 'tcl',
 			'sources': [
 				'src/tclbinding.cpp',
+				'src/tclnotifier.cpp',
 				'src/expose.cpp'
 			],
 			'variables': {

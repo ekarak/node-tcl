@@ -1,5 +1,6 @@
 
 #include "tclbinding.h"
+#include "tclnotifier.h"
 #include <cstring>
 #include <iostream>
 
@@ -22,6 +23,9 @@ TclBinding::TclBinding() {
 #if defined(HAS_CXX11) && defined(HAS_TCL_THREADS)
 	_tasks = nullptr;
 #endif
+
+	// set up custom Tcl Event Loop
+	NodeTclNotify::NodeTclNotifier::setup();
 
 	// initialise Tcl interpreter
 	_interp = Tcl_CreateInterp();
@@ -254,6 +258,8 @@ void TclBinding::toArray( const Nan::FunctionCallbackInfo< v8::Value > &info ) {
 * exposes the JS function object to Tcl
 */
 void TclBinding::expose( const Nan::FunctionCallbackInfo< v8::Value > &info ) {
+
+	printf("(%lp) TclBinding::expose\n", uv_thread_self());
 
 	// validate input params
 	if ( (info.Length() != 2) || (!info[1]->IsFunction()) || (!info[0]->IsString()) ) {
