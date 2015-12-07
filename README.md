@@ -1,6 +1,6 @@
 node-tcl
 ========
-
+[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/nukedzn/node-tcl?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 [![npm version](https://img.shields.io/npm/v/tcl.svg)](https://www.npmjs.com/package/tcl)
 [![Build Status](https://travis-ci.org/nukedzn/node-tcl.svg)](https://travis-ci.org/nukedzn/node-tcl)
 [![Coverage Status](https://coveralls.io/repos/nukedzn/node-tcl/badge.svg)](https://coveralls.io/r/nukedzn/node-tcl)
