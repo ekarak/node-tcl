@@ -49,14 +49,19 @@ namespace NodeTclNotify {
     void readReady(int fd);
     void writeReady(int fd);
     void exception(int fd);
-    void handle_timer(uv_timer_s* t);
+    void resetTimer();
+
   private:
     NodeTclNotifier();    // singleton
     ~NodeTclNotifier();
 
     template<int TclActivityType> static void perform_callback(int fd);
     HandlerMap m_handlers;
-    uv_timer_s m_timer;
+
+    uv_async_t m_timer_async;
+    uv_timer_t m_timer;
+    uint64_t   m_timer_timeout;
+
     static NodeTclNotifier* m_notifier;   // pointer to the single instance we allow
 
   };
@@ -75,6 +80,9 @@ namespace NodeTclNotify {
   };
 
 }
+
+void handle_timer(uv_timer_s* t);
+void timer_async_callback(uv_async_t* handle);
 
 
 
