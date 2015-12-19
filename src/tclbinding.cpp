@@ -25,7 +25,7 @@ TclBinding::TclBinding() {
 #endif
 
 	// set up custom Tcl Event Loop
-	NodeTclNotify::NodeTclNotifier::setup();
+	NodeTclNotify::setup();
 
 	// initialise Tcl interpreter
 	_interp = Tcl_CreateInterp();
