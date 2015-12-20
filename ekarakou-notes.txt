@@ -1,0 +1,34 @@
+
+=============
+https://github.com/bovine/nodetcl/issues/3
+=============
+Currently, to keep the Tcl event loop processing, it is necessary for the Javascript side to ensure that interp.process_events() or interp.eval("update") is periodically processed. However, this is currently an implementation detail that the user should not have to be aware of.
+
+The normal Node.JS behavior is to exit the "node" process once it has reached the end of the script file and there are no remaining event handlers installed or eligible to potentially run in the future.
+
+It would be desirable to make interp.eval() silently install a hook that would periodically call interp.process_events() only as long as there are Tcl event handlers that could be triggered. This would allow the same normal Node.JS behavior of automatically exiting the process once all JavaScript and Tcl event handlers have completed, without any additional special handling code by the user.
+
+The limiting factor currently seems to be that there is no way from the Tcl C API to determine if there are no more installed Tcl event handlers. There are some details in "man n Notifier" about the Tcl event sources, which might be relevant but this requires more research.
+
+========================
+libuv timers inaccuracy
+========================
+Seems that libUV timers fire stocastically as in setting one to fire at 100millisecs
+but it fires off at 17 msec:
+
+(0x7fb26596f780) SetTimer(0x23380e8 => 0.100000 sec)
+(0x7fb26596f780) (1)	setting timer to fire in 100 millisec 0 145318255807 diff = -145318255807
+(0x7fb26596f780) SetTimer(0x23380e8 => 0.099974 sec)
+(0x7fb26596f780) SetTimer(0x23380e8 => 0.099960 sec)
+timer2...
+(0x7fb26596f780) SetTimer(0x23380e8 => 0.099938 sec)
+(0x7fb26596f780) SetTimer(0x23380e8 => 0.099930 sec)
+(0x7fb26596f780) SetTimer(0x23380e8 => 0.099923 sec)
+...
+(0x7fb26596f780) (17) handle_timer, entering Tcl...
+(0x7fb26596f780) SetTimer(0x23380e8 => 0.083825 sec)
+(0x7fb26596f780)	stopping previous timer
+(0x7fb26596f780) (18)	setting timer to fire in 83 millisec 145318255807 145318255822 diff = -15
+(0x7fb26596f780) (18)	Tcl serviced 0 events in 142 usec
+(0x7fb26596f780) (100) handle_timer, entering Tcl...
+(0x7fb26596f780) SetTimer(0x23380e8 => 0.001475 sec)

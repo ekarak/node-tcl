@@ -8,11 +8,14 @@
 
 using namespace NodeTclNotify;
 
+//
 uint64_t   t0 = uv_hrtime(); // boot up time
-
+//
 uv_async_t m_timer_async;
 uv_timer_t m_timer;
-//uint64_t   m_timer_timeout;
+// estimated timestamp of next timer firing
+uint64_t   timer_next_firing;
+
 NodeTclNotify::HandlerMap m_handlers;
 
 
@@ -132,38 +135,42 @@ int NodeTclNotify::WaitForEvent(Tcl_Time* timePtr) {
  * This interface is needed because Tcl_WaitForEvent is not invoked when there is an
  * external event loop.
  *
+ * Practically speaking, for every 'after' there is a call to SetTimer().
  */
+
+// 10 microsecs opportunity window for successive calls to SetTimer
+#define TIMERDELTA 10
+
 void NodeTclNotify::SetTimer(Tcl_Time* timePtr) {
-	if (timePtr) {
+	if (timePtr && ((timePtr->sec > 0) || (timePtr->usec > 0))) {
 		// set new timer interval in **microseconds**
-		uint64_t newtimeout = (timePtr->sec * 1000000) + timePtr->usec;
-
-		printf("(%p) SetTimer(%p => %.3f msec)\n",
-				(void *) uv_thread_self(), timePtr, (float)newtimeout/(float)1000);
-
-		// 1 msec granularity
-		if (newtimeout > 0) {
-			uint64_t t1 = uv_hrtime();
-			printf("(%p) (%ld)\tsetting timer to fire in %ld millisec\n",
+		uint64_t timeout = (timePtr->sec * 1000000) + timePtr->usec;
+		printf("(%p) SetTimer(%p => %.6f sec)\n",
+				(void *) uv_thread_self(), timePtr, (float)timeout/(float)1000000);
+		uint64_t t1 = uv_hrtime(); // nanoseconds
+		//
+		if (abs(timer_next_firing - ((t1/1000) + timeout)) > TIMERDELTA) {
+			//
+			if (timer_next_firing > 0) {
+				printf("(%p)\tstopping previous timer\n", (void *) uv_thread_self());
+				uv_timer_stop(&m_timer);
+			}
+			printf("(%p) (%ld)\tsetting timer to fire in %ld millisec %ld %ld diff = %ld\n",
 					(void *) uv_thread_self(),
 					(t1-t0)/1000000,
-					newtimeout/1000 );
-			//m_timer_timeout = newtimeout;
-			resetTimer(newtimeout);
+					timeout/1000,
+					timer_next_firing, (t1/1000) + timeout,
+					timer_next_firing - ((t1/1000) + timeout));
+			//
+			timer_next_firing = (t1/1000) + timeout; // microsecs
+			// libuv only caters for *millisecond* accuracy
+			uint64_t to = timeout / 1000;
+			uv_timer_start(&m_timer, &NodeTclNotify::handle_timer, to, to);
 			//uv_async_send(&(m_timer_async));
 		}
 	}
 }
 
-void NodeTclNotify::resetTimer(uint64_t newtimeout) {
-	printf("(%p) resetTimer()\n", (void *) uv_thread_self());
-	uint64_t to = newtimeout / 1000;
-	if (to >  0) {
-		printf("\t uv_timer_start  %d msec\n", to);
-		// libuv only caters for *millisecond* accuracy
-		uv_timer_start(&m_timer, &NodeTclNotify::handle_timer, to, to);
-	}
-}
 
 void walk_cb(uv_handle_t* handle, void* arg) {
 	printf("\t(type: %d) (active: %d) (haas ref:%d) : %p\n",

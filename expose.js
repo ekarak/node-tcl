@@ -21,8 +21,8 @@ tcl.expose( 'puke',
 		throw "Danger, Will Robinson!"; 
 });
 
-tcl.cmdSync( "puts 3...; after 1000 {puts 2...}; after 2000 {puts 1...}; after 3000 {puts goodbye}");
-tcl.cmdSync( "puts 33...; after 1100 {puts 22..}; after 2200 {puts 11...}; after 3300 {puts goodbye}");
+tcl.cmdSync( "puts timer...;   after 100 {puts 100...}; after 250 {puts 250...}; after 500 {puts 500}");
+tcl.cmdSync( "puts timer2...; after 210 {puts 210..};  after 320 {puts 320...}; after 430 {puts 430}");
 tcl.cmdSync( "consolelog0" );
 tcl.cmdSync( "consolelog1 world" );
 tcl.cmdSync( "set sq8 [square 8]; puts \"the square of 8 is $sq8\"; flush stdout" );
