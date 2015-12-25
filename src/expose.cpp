@@ -35,7 +35,7 @@ int objCmdProcDispatcher(
 	v8::Local<v8::Function> function = v8::Local<v8::Function>::New(
 		Nan::GetCurrentContext()->GetIsolate(), jsb->jsFunc
 	);
-	// do the doo
+	// call the exposed Javascript function
 	Local<Value>  retv = function->Call( Nan::GetCurrentContext()->Global(), objc-1, &args );
 
 	if ( tc.HasCaught() ) {

@@ -2,6 +2,7 @@
 #ifndef TCLBINDING_H
 #define TCLBINDING_H
 
+#include <v8.h>
 #include <nan.h>
 #include <tcl.h>
 #include <map>
@@ -26,7 +27,7 @@ private:
 	static void queue( const Nan::FunctionCallbackInfo< v8::Value > &info );
 	static void toArray( const Nan::FunctionCallbackInfo< v8::Value > &info );
 	static void expose( const Nan::FunctionCallbackInfo< v8::Value > &info );
-
+	static int jsEval(ClientData, Tcl_Interp *, int, Tcl_Obj * const objv[]);
 	static Nan::Persistent< v8::Function > constructor;
 
 	Tcl_Interp * _interp;

@@ -12,7 +12,8 @@
 			'sources': [
 				'src/tclbinding.cpp',
 				'src/tclnotifier.cpp',
-				'src/expose.cpp'
+				'src/expose.cpp',
+				'src/util.cpp',
 			],
 			'variables': {
 				'tclthreads': '<!(. <(tclconfig) && echo ${TCL_THREADS})',
