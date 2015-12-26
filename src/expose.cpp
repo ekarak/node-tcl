@@ -1,4 +1,5 @@
 #include "expose.h"
+#include "util.h"
 
 /*
    dispatch a tcl command invocation to its exposed Javascript equivalent
@@ -24,7 +25,7 @@ int objCmdProcDispatcher(
 		 * todo: use the JsBinding->args to map datatypes, if possible */
 		Nan::Set(
 			jsFunctionArgs, i - 1,
-			Nan::New<String>( Tcl_GetString( objv[i] ) ).ToLocalChecked()
+			TclToV8(interp, objv[i])
 		);
 	}
 	Local<Value> args = Local<Value>::Cast(jsFunctionArgs);
@@ -72,8 +73,7 @@ int objCmdProcDispatcher(
 		if ( !retv.IsEmpty() && !retv->IsUndefined() ) {
 			std::string res(*String::Utf8Value(retv));
 			printf("\t\tResult == %s\n", res.c_str());
-			Tcl_Obj* tclres = Tcl_NewStringObj(res.c_str(), res.size());
-			Tcl_SetObjResult(interp, tclres);
+			Tcl_SetObjResult(interp, V8ToTcl(interp, retv));
 		}
 		return TCL_OK;
 

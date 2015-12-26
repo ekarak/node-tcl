@@ -13,6 +13,7 @@
 				'src/tclbinding.cpp',
 				'src/tclnotifier.cpp',
 				'src/expose.cpp',
+				'src/jsEval.cpp',
 				'src/util.cpp',
 			],
 			'variables': {
