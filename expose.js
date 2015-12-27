@@ -32,7 +32,7 @@ try {
 } catch (err) {
 	console.log("Javascript caught: "+err)
 }
-tcl.cmdSync( "set fd [open /proc/cpuinfo]; set str [read $fd]; close $fd; puts \"Read [string length $str] bytes\"" );
-tcl.cmdSync( "set lst [list 3 4 5];   set min [jsEval [list lst] { Math.min.apply( Math, lst ); }]; puts \" min=$min \" " );
-tcl.cmdSync( "set dct [dict create a 1 b 2]; set sum [jsEval [list dct] { dct.a + dct.b }]; puts \" sum=$sum \" " );
+//tcl.cmdSync( "set fd [open /proc/cpuinfo]; set str [read $fd]; close $fd; puts \"Read [string length $str] bytes\"" );
+//tcl.cmdSync( "set lst [list 3 4 5];   set min [jsEval [list lst] { Math.min.apply( Math, lst ); }]; puts \" min=$min \" " );
+//tcl.cmdSync( "set dct [dict create a 1 b 2]; set sum [jsEval [list dct] { dct.a + dct.b }]; puts \" sum=$sum \" " );
 tcl.cmdSync( "set dct [dict create a 1 b 2]; jsEval [list dct] { dct = {a: 100, b: 200} }; puts $dct" );

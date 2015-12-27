@@ -26,6 +26,8 @@ public:
 		m_name   = Tcl_GetString(varName);
 		// store a pointer to the actual Tcl variable (not its name)
 		m_tclvar = Tcl_ObjGetVar2(interp, varName, NULL, 0);
+		printf("\t\tBIND: converting Tcl value to V8\n");
+		m_v8val = TclToV8(m_interp, m_tclvar);
 		varbindings[m_name] =  this;
 	}
 	static void GenericReader(
@@ -39,8 +41,6 @@ public:
 			if (!x->second->m_v8val.IsEmpty()) {
 				// TODO: FIXME: unref/GC old value?
 			}
-			printf("\t\tBIND: converting Tcl value to V8\n");
-			x->second->m_v8val = TclToV8(x->second->m_interp, x->second->m_tclvar);
 			char* varval = Tcl_GetString(x->second->m_tclvar);
 			printf("\t\tBIND: %s value=(%s)\n", x->second->m_name.c_str(), varval);
 			info.GetReturnValue().Set(x->second->m_v8val);
@@ -61,8 +61,8 @@ public:
 		TclVariableBindingsMap::const_iterator x;
 		x = varbindings.find(*String::Utf8Value(property));
 		if (x != varbindings.end()) {
-			printf("\t\tBIND: converting V8 value to Tcl\n");
 			x->second->m_tclvar = V8ToTcl(x->second->m_interp, value);
+			printf("\t\tBIND: converting V8 value to Tcl (%s)\n", Tcl_GetString(x->second->m_tclvar));
 		} else {
 			std::string errmsg("GenericReader: Binding for ");
 						errmsg.append(*String::Utf8Value(property));
@@ -151,6 +151,12 @@ int TclBinding::jsEval(ClientData clientData, // (JsProxyBinding*)
 		Nan::MaybeLocal<v8::Value> retv = jsSource->Run();
 		//Nan::MaybeLocal<v8::Value> retv = Nan::RunScript(jsSource);
 		printf("after run\n");
+		TclVariableBindingsMap::const_iterator it;
+		for (it = varbindings.begin(); it != varbindings.end(); it++) {
+			TclVariableBinding* vb = it->second;
+			printf("reverse mapping of %s to Tcl...\n", it->first.c_str());
+			Tcl_SetVar2Ex(vb->m_interp, it->first.c_str(), NULL, vb->m_tclvar, 0);
+		}
 		if (!retv.IsEmpty()) {
 			std::string res(*String::Utf8Value(retv.ToLocalChecked()));
 			printf("\t\tResult == %s\n", res.c_str());

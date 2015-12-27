@@ -73,7 +73,7 @@ int objCmdProcDispatcher(
 		if ( !retv.IsEmpty() && !retv->IsUndefined() ) {
 			std::string res(*String::Utf8Value(retv));
 			printf("\t\tResult == %s\n", res.c_str());
-			Tcl_SetObjResult(interp, V8ToTcl(interp, retv));
+			Tcl_SetObjResult(interp, V8ToTcl(interp, Local<Object>::Cast(retv)));
 		}
 		return TCL_OK;
 

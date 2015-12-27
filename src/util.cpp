@@ -10,7 +10,9 @@
 using namespace v8;
 
 
-// map ANY Tcl object to V8
+/* map ANY Tcl object to V8
+ *
+ */
 Local<Value> TclToV8(Tcl_Interp* interp, Tcl_Obj* objPtr) {
 	assert(objPtr != NULL);
 	if ( objPtr->typePtr == NULL ) {
@@ -50,7 +52,7 @@ Local<Value> TclToV8(Tcl_Interp* interp, Tcl_Obj* objPtr) {
 		{
 			double shot;
 			if (TCL_OK == Tcl_GetDoubleFromObj(interp, objPtr, &shot)) {
-				return Local<Value>::Cast(Nan::New<Number>(shot));
+				return Nan::New<Number>(shot);
 			}
 		}
 		// =================================================
@@ -104,21 +106,23 @@ Local<Value> TclToV8(Tcl_Interp* interp, Tcl_Obj* objPtr) {
 		}
 		else {
 			printf("TODO: TclToV8 %s\n", objPtr->typePtr->name);
-		//	return NULL;
+			//return nullptr;
 		}
 	}
 }
 
-// map ANY V8/Javascript object to its Tcl equivalent
+/* Maps ANY V8/Javascript object to its Tcl equivalent
+ * Creates a NEW Tcl object for the given V8 Value
+ */
 Tcl_Obj* V8ToTcl(Tcl_Interp* interp, Value* v8v) {
 	Tcl_Obj* to = nullptr;
-
+		// ============
 	if (v8v->IsString()) {
 		// ============
 		Local<String> s = v8v->ToString();
 		// TODO: check that the Tcl interp is in UTF8 mode
 		to = Tcl_NewStringObj(*String::Utf8Value(s), s->Length());
-
+		// ===================
 	} else if (v8v->IsNumber()) {
 		// ===================
 		if (v8v->IsInt32() ) {
@@ -128,16 +132,21 @@ Tcl_Obj* V8ToTcl(Tcl_Interp* interp, Value* v8v) {
 		} else if (v8v->IsFloat32x4()) {
 			to = Tcl_NewDoubleObj(v8v->NumberValue());
 		}
-
+		// ===================
 	} else if (v8v->IsArray()) {
 		// ===================
 		v8::Array*  arr = v8::Array::Cast(v8v);
-		Tcl_NewListObj(arr->Length(), &to);
+		printf("V8 Array, length=%d\n", arr->Length());
+		to = Tcl_NewObj();
+		// Tcl_NewListObj(arr->Length(), &to);
 		for (uint32_t i=0; i < arr->Length(); i++) {
-			Tcl_ListObjAppendElement(interp, to, V8ToTcl(interp, *arr->Get(i)));
+			Tcl_Obj* newelement = V8ToTcl(interp, *arr->Get(i));
+			printf("V8 Array, item %d = %s\n", i, Tcl_GetString(newelement));
+			Tcl_ListObjAppendElement(interp, to, newelement);
 		}
+		// =====================================
 	} else if (v8v->IsMap() || v8v->IsObject()) {
-		// ===================================
+		// =====================================
 		to = Tcl_NewDictObj();
 		v8::Object*  v8o = v8::Object::Cast(v8v);
 		printf("***V8ToTcl: IsMap=%d IsObject=%d\n",v8v->IsMap(), v8v->IsObject());
@@ -151,7 +160,7 @@ Tcl_Obj* V8ToTcl(Tcl_Interp* interp, Value* v8v) {
 					*String::Utf8Value(value));
 		    Tcl_DictObjPut(interp, to, V8ToTcl(interp, key), V8ToTcl(interp, value));
 		}
-
+		// ===================
 	} else if (v8v->IsRegExp()) {
 		// ===================
 		// todo
