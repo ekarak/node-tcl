@@ -99,73 +99,63 @@ int TclBinding::jsEval(ClientData clientData, // (JsProxyBinding*)
 	}
 
 	// get the JS snippet
-	char * javascript = Tcl_GetString(objv[2]);
+	char* javascript = Tcl_GetString(objv[2]);
 	if ( strlen(javascript) == 0 ) {
 		std::string msg("jsEval: 2nd arg not a string");
 		Tcl_SetObjResult(interp, Tcl_NewStringObj(msg.c_str(), msg.length()));
 		return TCL_ERROR;
 	}
+
 	Isolate*               isolate = Nan::GetCurrentContext()->GetIsolate();
 	v8::Local<v8::Object>  scriptContext = Nan::GetCurrentContext()->Global();
 	Handle<ObjectTemplate> global_templ = ObjectTemplate::New();
 
-	/*Nan::MaybeLocal<Nan::BoundScript> maybeCompiledJs= Nan::CompileScript(
-			Nan::New<String>( javascript ).ToLocalChecked()
-	);*/
+	int arglistLength;
+	Tcl_ListObjLength(interp, arglist, &arglistLength);
+	printf("arg list length == %d\n", arglistLength);
 
-	//
-	//if (!maybeCompiledJs.IsEmpty()) {
-		//
-		//Local<Script> jsSource = maybeCompiledJs.ToLocalChecked();
-		//
+	for ( int i = 0; i < arglistLength; i++ ) {
+		// get the variable NAME
+		Tcl_Obj* varName;
+		Tcl_ListObjIndex(interp, arglist, i, &varName);
+		char* vn = Tcl_GetString(varName);
+		printf("\tbinding %s (idx: %d) to V8\n", vn, i);
+		// then get its value
+		// todo: add new variable in v8 script context, according to its typePtr
+		TclVariableBinding* varbind = new TclVariableBinding(interp, varName);
+		global_templ->SetAccessor(
+				Nan::New<String>(vn).ToLocalChecked(),
+				TclVariableBinding::GenericReader,
+				TclVariableBinding::GenericWriter
+			);
+	}
+	// Create a new context.
+	Handle<Context> context = Context::New(isolate, NULL, global_templ);
 
-		// bind the requested Tcl variables into V8
-		int arglistLength;
-		Tcl_ListObjLength(interp, arglist, &arglistLength);
-		printf("arg list length == %d\n", arglistLength);
+	// Enter the created context for compiling and
+	// running the hello world script.
+	context->Enter();
 
-		for ( int i = 0; i < arglistLength; i++ ) {
-			// get the variable NAME
-			Tcl_Obj* varName;
-			Tcl_ListObjIndex(interp, arglist, i, &varName);
-			char* vn = Tcl_GetString(varName);
-			printf("\tbinding %s (idx: %d) to V8\n", vn, i);
-			// then get its value
-			// todo: add new variable in v8 script context, according to its typePtr
-			TclVariableBinding* varbind = new TclVariableBinding(interp, varName);
-			global_templ->SetAccessor(
-					Nan::New<String>(vn).ToLocalChecked(),
-					TclVariableBinding::GenericReader,
-					TclVariableBinding::GenericWriter
-				);
-		}
-		  // Create a new context.
-		  Handle<Context> context = Context::New(isolate, NULL, global_templ);
+	v8::Handle<v8::Script> jsSource = v8::Script::Compile(Nan::New<String>(javascript).ToLocalChecked());
+	printf("before run\n");
+	Nan::MaybeLocal<v8::Value> retv = jsSource->Run();
+	printf("after run\n");
+	TclVariableBindingsMap::const_iterator it;
+	for (it = varbindings.begin(); it != varbindings.end(); it++) {
+		TclVariableBinding* vb = it->second;
+		printf("reverse mapping of %s to Tcl...\n", it->first.c_str());
+		Tcl_SetVar2Ex(vb->m_interp, it->first.c_str(), NULL, vb->m_tclvar, 0);
+		delete vb;
+	}
+	varbindings.clear();
+	if (!retv.IsEmpty()) {
+		std::string res(*String::Utf8Value(retv.ToLocalChecked()));
+		printf("\t\tResult == %s\n", res.c_str());
+		Tcl_Obj* tclres = Tcl_NewStringObj(res.c_str(), res.size());
+		Tcl_SetObjResult(interp, tclres);
+	}
 
-		  // Enter the created context for compiling and
-		  // running the hello world script.
-		  context->Enter();
+	context->Exit();
 
-		  v8::Handle<v8::Script> jsSource = v8::Script::Compile(Nan::New<String>(javascript).ToLocalChecked());
-		printf("before run\n");
-		Nan::MaybeLocal<v8::Value> retv = jsSource->Run();
-		//Nan::MaybeLocal<v8::Value> retv = Nan::RunScript(jsSource);
-		printf("after run\n");
-		TclVariableBindingsMap::const_iterator it;
-		for (it = varbindings.begin(); it != varbindings.end(); it++) {
-			TclVariableBinding* vb = it->second;
-			printf("reverse mapping of %s to Tcl...\n", it->first.c_str());
-			Tcl_SetVar2Ex(vb->m_interp, it->first.c_str(), NULL, vb->m_tclvar, 0);
-		}
-		if (!retv.IsEmpty()) {
-			std::string res(*String::Utf8Value(retv.ToLocalChecked()));
-			printf("\t\tResult == %s\n", res.c_str());
-			Tcl_Obj* tclres = Tcl_NewStringObj(res.c_str(), res.size());
-			Tcl_SetObjResult(interp, tclres);
-		}
-		//
-		context->Exit();
-	//}
 	return TCL_OK;
-
 }
