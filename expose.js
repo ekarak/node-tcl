@@ -33,6 +33,12 @@ tcl.cmdSync( 'puts "About to throw a JS exception..."; if {[catch puke msg]} {pu
 //	console.log("Javascript caught: "+err)
 //}
 //tcl.cmdSync( "set fd [open /proc/cpuinfo]; set str [read $fd]; close $fd; puts \"Read [string length $str] bytes\"" );
-//tcl.cmdSync( "set lst [list 66 33 44 55;    set min [jsEval [list lst] { Math.min.apply( Math, lst ); }]; puts \" min=$min \" " );
-//tcl.cmdSync( "set dct [dict create a 1 b 2]; set sum [jsEval [list dct] { dct.a + dct.b }]; puts \" sum=$sum \" " );
-//tcl.cmdSync( "set dct [dict create a 1 b 2]; jsEval [list dct] { dct = {a: {subelem1: {tree1: 1, tree2: 2}, subelem2: 20}, b: 200} }; puts $dct" );
+tcl.cmd( "set lst [list 66 33 44 55]; return [jsEval [list lst] { Math.min.apply( Math, lst ); }]", function(err, res) {
+	console.log("1 err:" + err + " result:" + res);
+} );
+tcl.cmd( "set dct [dict create a 1 b 2]; return [jsEval [list dct] { dct.a + dct.b }]" , function(err, res) {
+	console.log("2 err:" + err + " result:" + res);
+} );
+tcl.cmd( "set dct [dict create a 1 b 2]; return [jsEval [list dct] { dct = {a: {subelem1: {tree1: 1, tree2: 2}, subelem2: 20}, b: 200} }]", function(err, res) {
+	console.log("3 err:" + err + " result:" + res);
+} );

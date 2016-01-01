@@ -6,9 +6,31 @@
  */
 
 #include "util.h"
+#include "jsEval.h"
 
 using namespace v8;
 
+Tcl_Interp* newTclInterp() {
+	// initialise Tcl interpreter
+	Tcl_Interp* _interp = Tcl_CreateInterp();
+
+	printf("%p: new Tcl interpreter: %p\n", (void*) uv_thread_self(), _interp);
+
+	if ( TCL_OK != Tcl_Init( _interp ) ) {
+		Nan::ThrowError( "Failed to initialise Tcl interpreter" );
+	}
+
+	// add the generic jsEval hook in Tcl
+	Tcl_CreateObjCommand(
+		_interp,
+		"jsEval",
+		&jsEval,
+		NULL, // clientData,
+		NULL
+	);
+
+	return _interp;
+}
 
 /* map ANY Tcl object to V8
  *
@@ -172,3 +194,4 @@ Tcl_Obj* V8ToTcl(Tcl_Interp* interp, Value* v8v) {
 Tcl_Obj* V8ToTcl(Tcl_Interp* interp, Local<Value> v8v) {
 	return V8ToTcl(interp, *v8v);
 }
+

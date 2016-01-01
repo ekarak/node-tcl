@@ -1,7 +1,7 @@
 
 #include "tclworker.h"
-#include <tcl.h>
-
+#include "jsEval.h"
+#include "util.h"
 
 TclWorker::TclWorker( const char * cmd, Nan::Callback * callback )
 	: Nan::AsyncWorker( callback ), _cmd( cmd ) {
@@ -33,7 +33,7 @@ void TclWorker::HandleOKCallback() {
 void TclWorker::Execute() {
 
 	// initialise a new Tcl interpreter for the thread
-	Tcl_Interp * interp = Tcl_CreateInterp();
+	Tcl_Interp * interp = newTclInterp();
 
 	if ( TCL_OK == Tcl_Init( interp ) ) {
 

@@ -30,20 +30,7 @@ TclBinding::TclBinding() {
 	NodeTclNotify::setup();
 
 	// initialise Tcl interpreter
-	_interp = Tcl_CreateInterp();
-	if ( TCL_OK != Tcl_Init( _interp ) ) {
-		Nan::ThrowError( "Failed to initialise Tcl interpreter" );
-	}
-
-	// add the generic jsEval hook in Tcl
-	Tcl_CreateObjCommand(
-		_interp,
-		"jsEval",
-		&TclBinding::jsEval,
-		NULL, // clientData,
-		NULL
-	);
-
+	_interp = newTclInterp();
 }
 
 TclBinding::~TclBinding() {

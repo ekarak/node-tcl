@@ -1,7 +1,6 @@
 
 #include "taskrunner.h"
-#include <tcl.h>
-
+#include "util.h"
 
 TaskRunner::TaskRunner() : _terminate( false ) {
 
@@ -50,7 +49,7 @@ void TaskRunner::worker() {
 
 	task_t task;
 
-	Tcl_Interp * interp = Tcl_CreateInterp();
+	Tcl_Interp * interp = newTclInterp();
 	int status = Tcl_Init( interp );
 
 	while (! _terminate ) {

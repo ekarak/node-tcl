@@ -11,8 +11,8 @@ var tclb    = new binding.TclBinding();
 
 describe( 'TclBinding', function () {
 
-	context( 'jsEval', function () {
-
+	context( 'jsEval', function () {		
+		
 		it( 'should bind correctly Tcl list values to V8', function () {
 			var result;
 			try {
@@ -60,5 +60,22 @@ describe( 'TclBinding', function () {
 			}
 			expect( result == 20 );
 		} );
+		
+		it( 'should work correctly with async mode', function () {
+			var result;
+			try {
+				tcl.cmd("set lst [list 66 33 44 55]; " +
+						"return [jsEval [list lst] { Math.min.apply( Math, lst ); }]", 
+						function(err, res) {
+							result = res;
+							done();
+						}
+				);
+			} catch ( e ) {
+				result = e;
+			}
+			expect( result == 33 );
+		} );
+
 	} );
 } );

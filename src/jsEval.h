@@ -15,5 +15,10 @@
 // a class for wrapping the bindings of Tcl variables into Gorgoroth (V8 land)
 class TclVariableBinding;
 typedef std::map<std::string, TclVariableBinding*> TclVariableBindingsMap;
-TclVariableBindingsMap varbindings;
+
+int jsEval(ClientData clientData, // (JsProxyBinding*)
+		Tcl_Interp *interp,
+		int objc,
+		Tcl_Obj *const objv[]);
+
 #endif /* SRC_JSEVAL_H_ */

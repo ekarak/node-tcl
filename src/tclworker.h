@@ -4,6 +4,7 @@
 
 #include <nan.h>
 #include <string>
+#include <tcl.h>
 
 
 class TclWorker : public Nan::AsyncWorker {

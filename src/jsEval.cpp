@@ -11,6 +11,7 @@
 
 using namespace v8;
 
+TclVariableBindingsMap varbindings;
 
 // a class for wrapping the bindings of Tcl variables into Gorgoroth (V8 land)
 class TclVariableBinding {
@@ -28,6 +29,7 @@ public:
 		m_tclvar = Tcl_ObjGetVar2(interp, varName, NULL, 0);
 		printf("\t\tBIND: converting Tcl value to V8\n");
 		m_v8val = TclToV8(m_interp, m_tclvar);
+
 		varbindings[m_name] =  this;
 	}
 	static void GenericReader(
@@ -72,16 +74,26 @@ public:
 	};
 };
 
+class ArrayBufferAllocator : public v8::ArrayBuffer::Allocator {
+ public:
+  virtual void* Allocate(size_t length) {
+    void* data = AllocateUninitialized(length);
+    return data == NULL ? data : memset(data, 0, length);
+  }
+  virtual void* AllocateUninitialized(size_t length) { return malloc(length); }
+  virtual void Free(void* data, size_t) { free(data); }
+};
+
 
 /*
  * proc to pollute Tcl with Javascript.
  */
-int TclBinding::jsEval(ClientData clientData, // (JsProxyBinding*)
+int jsEval(ClientData clientData, // (JsProxyBinding*)
 		Tcl_Interp *interp,
 		int objc,
 		Tcl_Obj *const objv[])
 {
-	printf("(%p) TclBinding::jsEval\n", (void *)uv_thread_self());
+	printf("(%p) TclBinding::jsEval (interp=%p)\n", (void *)uv_thread_self(), interp);
 
 	// validate input params
 	if ( (objc != 3) ) {
@@ -106,9 +118,23 @@ int TclBinding::jsEval(ClientData clientData, // (JsProxyBinding*)
 		return TCL_ERROR;
 	}
 
-	Isolate*               isolate = Nan::GetCurrentContext()->GetIsolate();
-	v8::Local<v8::Object>  scriptContext = Nan::GetCurrentContext()->Global();
-	Handle<ObjectTemplate> global_templ = ObjectTemplate::New();
+	Isolate* isolate  = v8::Isolate::GetCurrent();
+	if (!isolate) {
+		// Get a new instance of the V8 Engine (so conveniently called an 'Isolate')
+		printf("(%p) TclBinding::jsEval (interp=%p) creating v8::Isolate\n", (void *)uv_thread_self(), interp);
+		ArrayBufferAllocator  allocator;
+		Isolate::CreateParams create_params;
+		create_params.array_buffer_allocator = &allocator;
+		isolate = Isolate::New(create_params);
+	}
+	isolate->Enter();
+//    Isolate::Scope isolate_scope(isolate);
+
+    // Create a stack-allocated handle scope.
+    HandleScope handle_scope(isolate);
+
+	// new v8 global template
+	Handle<ObjectTemplate> global_templ  = ObjectTemplate::New(isolate);
 
 	int arglistLength;
 	Tcl_ListObjLength(interp, arglist, &arglistLength);
@@ -121,7 +147,6 @@ int TclBinding::jsEval(ClientData clientData, // (JsProxyBinding*)
 		char* vn = Tcl_GetString(varName);
 		printf("\tbinding %s (idx: %d) to V8\n", vn, i);
 		// then get its value
-		// todo: add new variable in v8 script context, according to its typePtr
 		TclVariableBinding* varbind = new TclVariableBinding(interp, varName);
 		global_templ->SetAccessor(
 				Nan::New<String>(vn).ToLocalChecked(),
@@ -129,13 +154,12 @@ int TclBinding::jsEval(ClientData clientData, // (JsProxyBinding*)
 				TclVariableBinding::GenericWriter
 			);
 	}
+
 	// Create a new context.
 	Handle<Context> context = Context::New(isolate, NULL, global_templ);
 
-	// Enter the created context for compiling and
-	// running the hello world script.
+	// Enter the created context for compiling and running the script.
 	context->Enter();
-
 	v8::Handle<v8::Script> jsSource = v8::Script::Compile(Nan::New<String>(javascript).ToLocalChecked());
 	printf("before run\n");
 	Nan::MaybeLocal<v8::Value> retv = jsSource->Run();
@@ -156,6 +180,9 @@ int TclBinding::jsEval(ClientData clientData, // (JsProxyBinding*)
 	}
 
 	context->Exit();
+	isolate->Exit();
+	isolate->Dispose();
 
+// TODO: error handling!
 	return TCL_OK;
 }

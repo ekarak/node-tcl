@@ -13,6 +13,9 @@
 #include "nan.h"
 #include "tcl.h"
 
+//
+Tcl_Interp* newTclInterp();
+
 // convert any Tcl value into a v8 value
 v8::Local<v8::Value> TclToV8(Tcl_Interp*, Tcl_Obj*);
 
