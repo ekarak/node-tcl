@@ -4,7 +4,7 @@
 	    ['LINK','/usr/bin/clang++'],
 	  ],
 	'variables': {
-		'tclconfig%': '<!(tclsh8.5 gyp/tclconfig.tcl)'
+		'tclconfig%': '<!(tclsh gyp/tclconfig.tcl)'
 	},
 	'targets': [
 		{

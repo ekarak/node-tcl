@@ -42,8 +42,8 @@ namespace NodeTclNotify {
    //template<int TclActivityType> void perform_callback(int fd);
 
    // the key Tcl Notifier functions
-   void  SetTimer(Tcl_Time* timePtr);
-   int   WaitForEvent(Tcl_Time* timePtr);
+   void  SetTimer(CONST86 Tcl_Time* timePtr);
+   int   WaitForEvent(CONST86 Tcl_Time* timePtr);
    void  CreateFileHandler(int fd, int mask, Tcl_FileProc* proc, ClientData clientData);
    void  DeleteFileHandler(int fd);
    void* InitNotifier();

@@ -74,21 +74,13 @@ public:
 	};
 };
 
-class ArrayBufferAllocator : public v8::ArrayBuffer::Allocator {
- public:
-  virtual void* Allocate(size_t length) {
-    void* data = AllocateUninitialized(length);
-    return data == NULL ? data : memset(data, 0, length);
-  }
-  virtual void* AllocateUninitialized(size_t length) { return malloc(length); }
-  virtual void Free(void* data, size_t) { free(data); }
-};
+
 
 
 /*
  * proc to pollute Tcl with Javascript.
  */
-int jsEval(ClientData clientData, // (JsProxyBinding*)
+int jsEval(ClientData clientData, // (v8::Isolate*)
 		Tcl_Interp *interp,
 		int objc,
 		Tcl_Obj *const objv[])
@@ -118,20 +110,17 @@ int jsEval(ClientData clientData, // (JsProxyBinding*)
 		return TCL_ERROR;
 	}
 
+	// Get handle to the V8 Isolate for this Tcl interpreter
 	Isolate* isolate  = v8::Isolate::GetCurrent();
-	if (!isolate) {
-		// Get a new instance of the V8 Engine (so conveniently called an 'Isolate')
-		printf("(%p) TclBinding::jsEval (interp=%p) creating v8::Isolate\n", (void *)uv_thread_self(), interp);
-		ArrayBufferAllocator  allocator;
-		Isolate::CreateParams create_params;
-		create_params.array_buffer_allocator = &allocator;
-		isolate = Isolate::New(create_params);
-	}
-	isolate->Enter();
-//    Isolate::Scope isolate_scope(isolate);
 
-    // Create a stack-allocated handle scope.
-    HandleScope handle_scope(isolate);
+	// lock the Isolate for multi-threaded access (not reentrant on its own)
+	v8::Locker locker(isolate);
+
+	isolate->Enter();
+	Isolate::Scope isolate_scope(isolate);
+
+  // Create a stack-allocated handle scope.
+  HandleScope handle_scope(isolate);
 
 	// new v8 global template
 	Handle<ObjectTemplate> global_templ  = ObjectTemplate::New(isolate);
@@ -160,7 +149,11 @@ int jsEval(ClientData clientData, // (JsProxyBinding*)
 
 	// Enter the created context for compiling and running the script.
 	context->Enter();
+
+	// Compile
 	v8::Handle<v8::Script> jsSource = v8::Script::Compile(Nan::New<String>(javascript).ToLocalChecked());
+
+	// Run
 	printf("before run\n");
 	Nan::MaybeLocal<v8::Value> retv = jsSource->Run();
 	printf("after run\n");
@@ -181,7 +174,6 @@ int jsEval(ClientData clientData, // (JsProxyBinding*)
 
 	context->Exit();
 	isolate->Exit();
-	isolate->Dispose();
 
 // TODO: error handling!
 	return TCL_OK;

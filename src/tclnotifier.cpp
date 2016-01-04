@@ -28,8 +28,8 @@ NodeTclNotify::HandlerMap m_handlers;
 // Store the requested callback and establish one or more QSocketNotifier objects to link the activity to it
 void NodeTclNotify::CreateFileHandler(int fd, int mask, Tcl_FileProc* proc,
 		ClientData clientData) {
-	printf("(%p) CreateFileHandler\n",
-			(void *) uv_thread_self());
+	printf("(%p) CreateFileHandler(fd=%d, mask=%d, proc=%lp)\n",
+			(void *) uv_thread_self(), fd, mask, proc);
 	// find any existing handler and deactivate it
 	HandlerMap::iterator old_handler_it = m_handlers.find(fd);
 	if (old_handler_it != m_handlers.end()) {
@@ -108,12 +108,12 @@ void NodeTclNotify::exception(int fd) {
 }
 
 // If events are available process them, and otherwise wait up to a specified interval for one to occur
-int NodeTclNotify::WaitForEvent(Tcl_Time* timePtr) {
-	printf("(%p) WaitForEvent(%p => %ld:%ld)\n",
-			(void *) uv_thread_self(), timePtr, timePtr->sec, timePtr->usec);
-
+int NodeTclNotify::WaitForEvent(CONST86 Tcl_Time* timePtr) {
 	int timeout;
 	if (timePtr) {
+		printf("(%p) WaitForEvent(%p => %ld:%ld)\n",
+				(void *) uv_thread_self(), timePtr, timePtr->sec, timePtr->usec);
+
 		timeout = timePtr->sec * 1000 + timePtr->usec / 1000;
 		if (timeout == 0) {
 			// timeout 0 means "do not block". There are no events, so return without processing
@@ -141,7 +141,7 @@ int NodeTclNotify::WaitForEvent(Tcl_Time* timePtr) {
 // 10 microsecs opportunity window for successive calls to SetTimer
 #define TIMERDELTA 10
 
-void NodeTclNotify::SetTimer(Tcl_Time* timePtr) {
+void NodeTclNotify::SetTimer(CONST86 Tcl_Time* timePtr) {
 	if (timePtr && ((timePtr->sec > 0) || (timePtr->usec > 0))) {
 		// set new timer interval in **microseconds**
 		uint64_t timeout = (timePtr->sec * 1000000) + timePtr->usec;
@@ -230,7 +230,7 @@ void NodeTclNotify::FinalizeNotifier(ClientData cd) {
 
 // Can't find any examples of how this should work.  Unix implementation is empty
 void NodeTclNotify::ServiceModeHook(int p) {
-	//printf("(%p) ServiceModeHook (%d)\n",(void *) uv_thread_self(), p);
+	printf("(%p) ServiceModeHook (%d)\n",(void *) uv_thread_self(), p);
 }
 
 // only one method for NodeTclFileHandler - executing the callback (with type check)

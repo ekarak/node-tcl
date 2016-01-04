@@ -23,4 +23,6 @@ v8::Local<v8::Value> TclToV8(Tcl_Interp*, Tcl_Obj*);
 Tcl_Obj* V8ToTcl(Tcl_Interp* interp, v8::Value* v8v);
 Tcl_Obj* V8ToTcl(Tcl_Interp* interp, v8::Local<v8::Value> v8v);
 
+v8::Isolate* newV8Isolate();
+
 #endif /* SRC_UTIL_H_ */

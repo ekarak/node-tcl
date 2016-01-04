@@ -5,7 +5,7 @@
 
 TclWorker::TclWorker( const char * cmd, Nan::Callback * callback )
 	: Nan::AsyncWorker( callback ), _cmd( cmd ) {
-
+		printf("(%p): new async TclWorker\n", (void*) uv_thread_self());
 }
 
 
@@ -32,6 +32,9 @@ void TclWorker::HandleOKCallback() {
 
 void TclWorker::Execute() {
 
+	_isolate = newV8Isolate();
+	_isolate->Enter();
+	
 	// initialise a new Tcl interpreter for the thread
 	Tcl_Interp * interp = newTclInterp();
 
@@ -54,4 +57,3 @@ void TclWorker::Execute() {
 	Tcl_DeleteInterp( interp );
 
 }
-

@@ -39,8 +39,9 @@ private:
 	std::mutex  _task_mutex;
 
 	std::condition_variable _worker_cnd;
-
+	
+	//
+	v8::Isolate* _isolate;
 };
 
 #endif /*! TASKRUNNER_H */
-

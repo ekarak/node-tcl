@@ -2,11 +2,16 @@
 #include "taskrunner.h"
 #include "util.h"
 
+using namespace v8;
+
 TaskRunner::TaskRunner() : _terminate( false ) {
 
 	// initialise worker thread
 	_worker = std::thread( &TaskRunner::worker, this );
 
+	printf("(%p): new async TaskRunner => new worker thread=%p\n",
+	 	(void*) uv_thread_self(),
+		_worker.native_handle());
 }
 
 
@@ -49,6 +54,9 @@ void TaskRunner::worker() {
 
 	task_t task;
 
+	_isolate = newV8Isolate();
+	_isolate->Enter();
+	
 	Tcl_Interp * interp = newTclInterp();
 	int status = Tcl_Init( interp );
 
@@ -86,5 +94,6 @@ void TaskRunner::worker() {
 	// cleanup
 	Tcl_DeleteInterp( interp );
 
+	_isolate->Exit();
+	_isolate->Dispose();
 }
-
