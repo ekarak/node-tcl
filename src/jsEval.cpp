@@ -78,13 +78,14 @@ public:
 
 
 /*
- * proc to pollute Tcl with Javascript.
+ * Tcl proc to embed Javascript
  */
-int jsEval(ClientData clientData, // (v8::Isolate*)
-		Tcl_Interp *interp,
-		int objc,
-		Tcl_Obj *const objv[])
-{
+int jsEval(
+	ClientData clientData,
+	Tcl_Interp *interp,
+	int objc,
+	Tcl_Obj *const objv[]
+){
 	printf("(%p) TclBinding::jsEval (interp=%p)\n", (void *)uv_thread_self(), interp);
 
 	// validate input params
@@ -112,18 +113,24 @@ int jsEval(ClientData clientData, // (v8::Isolate*)
 
 	// Get handle to the V8 Isolate for this Tcl interpreter
 	Isolate* isolate  = v8::Isolate::GetCurrent();
+	assert(isolate != nullptr);
 
 	// lock the Isolate for multi-threaded access (not reentrant on its own)
-	v8::Locker locker(isolate);
+	Locker locker(isolate);
 
-	isolate->Enter();
 	Isolate::Scope isolate_scope(isolate);
 
-  // Create a stack-allocated handle scope.
-  HandleScope handle_scope(isolate);
+	// Create a stack-allocated handle scope.
+	HandleScope handle_scope(isolate);
 
 	// new v8 global template
-	Handle<ObjectTemplate> global_templ  = ObjectTemplate::New(isolate);
+	Handle<ObjectTemplate> global_templ = ObjectTemplate::New(isolate);
+
+	// Create a new context.
+	Handle<Context> context = Context::New(isolate, NULL, global_templ);
+
+	// Enter the created context for compiling and running the script.
+	context->Enter();
 
 	int arglistLength;
 	Tcl_ListObjLength(interp, arglist, &arglistLength);
@@ -144,12 +151,6 @@ int jsEval(ClientData clientData, // (v8::Isolate*)
 			);
 	}
 
-	// Create a new context.
-	Handle<Context> context = Context::New(isolate, NULL, global_templ);
-
-	// Enter the created context for compiling and running the script.
-	context->Enter();
-
 	// Compile
 	v8::Handle<v8::Script> jsSource = v8::Script::Compile(Nan::New<String>(javascript).ToLocalChecked());
 
@@ -157,6 +158,8 @@ int jsEval(ClientData clientData, // (v8::Isolate*)
 	printf("before run\n");
 	Nan::MaybeLocal<v8::Value> retv = jsSource->Run();
 	printf("after run\n");
+
+	// FIXME: make this reentrant, ie. stop using a static varmap (use thread locals instead)
 	TclVariableBindingsMap::const_iterator it;
 	for (it = varbindings.begin(); it != varbindings.end(); it++) {
 		TclVariableBinding* vb = it->second;
@@ -173,7 +176,6 @@ int jsEval(ClientData clientData, // (v8::Isolate*)
 	}
 
 	context->Exit();
-	isolate->Exit();
 
 // TODO: error handling!
 	return TCL_OK;

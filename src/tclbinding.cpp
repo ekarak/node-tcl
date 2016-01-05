@@ -15,6 +15,20 @@
 #include "expose.h"
 #include "util.h"
 
+class MallocArrayBufferAllocator : public v8::ArrayBuffer::Allocator {
+  public:
+    virtual void* Allocate(size_t length) {
+        return calloc(length,1);
+    }
+    virtual void* AllocateUninitialized(size_t length) {
+        return malloc(length);
+    }
+    // XXX we assume length is not needed
+    virtual void Free(void*data, size_t length) {
+        free(data);
+    }
+};
+
 using namespace v8;
 
 // initialise static vars
@@ -53,6 +67,11 @@ static void gc_end(GCType type, GCCallbackFlags flags){
 }
 
 void TclBinding::init( v8::Local< v8::Object > exports ) {
+
+	/*
+	 * http://www.borisvanschooten.nl/blog/2014/06/23/typed-arrays-on-embedded-v8-2014-edition
+	 */
+	v8::V8::SetArrayBufferAllocator(new MallocArrayBufferAllocator());
 
 	// ekarak: add GC hints
 	v8::V8::AddGCPrologueCallback(&gc_begin);

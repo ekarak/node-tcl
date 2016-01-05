@@ -195,24 +195,13 @@ Tcl_Obj* V8ToTcl(Tcl_Interp* interp, Local<Value> v8v) {
 	return V8ToTcl(interp, *v8v);
 }
 
-
-class ArrayBufferAllocator : public v8::ArrayBuffer::Allocator {
- public:
-  virtual void* Allocate(size_t length) {
-    void* data = AllocateUninitialized(length);
-    return data == NULL ? data : memset(data, 0, length);
-  }
-  virtual void* AllocateUninitialized(size_t length) { return malloc(length); }
-  virtual void Free(void* data, size_t) { free(data); }
-};
-
+/*
+ * Get a new instance of the V8 Engine (so conveniently called an 'Isolate')
+ */
 v8::Isolate* newV8Isolate() {
-	// Get a new instance of the V8 Engine (so conveniently called an 'Isolate')
+
 	printf("(%p) TaskRunner::worker: creating new v8::Isolate\n", (void *)uv_thread_self());
-	ArrayBufferAllocator  allocator;
-	Isolate::CreateParams create_params;
-	create_params.array_buffer_allocator = &allocator;
-	//
-	v8::Isolate* _isolate = Isolate::New(create_params);
+	v8::Isolate* _isolate = Isolate::New();
 	return _isolate;
 }
+
