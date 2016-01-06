@@ -11,9 +11,8 @@
 
 using namespace v8;
 
-TclVariableBindingsMap varbindings;
 
-// a class for wrapping the bindings of Tcl variables into Gorgoroth (V8 land)
+// a class for wrapping the bindings of Tcl variables into V8 land
 class TclVariableBinding {
 public:
 	Tcl_Interp*  m_interp;
@@ -27,24 +26,25 @@ public:
 		m_name   = Tcl_GetString(varName);
 		// store a pointer to the actual Tcl variable (not its name)
 		m_tclvar = Tcl_ObjGetVar2(interp, varName, NULL, 0);
-		printf("\t\tBIND: converting Tcl value to V8\n");
 		m_v8val = TclToV8(m_interp, m_tclvar);
-
-		varbindings[m_name] =  this;
 	}
+
 	static void GenericReader(
 		Local< String > property,
 		const PropertyCallbackInfo< Value > &info
 	) {
-		printf("Accessor Reader for %s called!\n", *String::Utf8Value(property));
+		v8log("Accessor Reader for %s called!\n", *String::Utf8Value(property));
+
+		// V8 appears to have 4 data slots in each Isolate
+		TclVariableBindingsMap* m_map = (TclVariableBindingsMap*) v8::Isolate::GetCurrent()->GetData(0);
 		TclVariableBindingsMap::const_iterator x;
-		x = varbindings.find(*String::Utf8Value(property));
-		if (x != varbindings.end()) {
+		x = m_map->find(*String::Utf8Value(property));
+		if (x != m_map->end()) {
 			if (!x->second->m_v8val.IsEmpty()) {
 				// TODO: FIXME: unref/GC old value?
 			}
 			char* varval = Tcl_GetString(x->second->m_tclvar);
-			printf("\t\tBIND: %s value=(%s)\n", x->second->m_name.c_str(), varval);
+			v8log("\tBIND: %s value=(%s)\n", x->second->m_name.c_str(), varval);
 			info.GetReturnValue().Set(x->second->m_v8val);
 		} else {
 			std::string errmsg("GenericReader: Binding for ");
@@ -53,18 +53,22 @@ public:
 			Nan::ThrowError(Nan::New<String>(errmsg).ToLocalChecked());
 		}
 	};
+
 	// V8 updates property => map to Tcl object
 	static void GenericWriter(
 			Local<String> property,
 		    Local<Value> value,
 		    const PropertyCallbackInfo<void>& info
 	) {
-		printf("Accessor Writer for %s called!\n", *String::Utf8Value(property));
+		v8log("Accessor Writer for %s called!\n", *String::Utf8Value(property));
+
+		// V8 appears to have 4 data slots in each Isolate
+		TclVariableBindingsMap* m_map = (TclVariableBindingsMap*) v8::Isolate::GetCurrent()->GetData(0);
 		TclVariableBindingsMap::const_iterator x;
-		x = varbindings.find(*String::Utf8Value(property));
-		if (x != varbindings.end()) {
+		x = m_map->find(*String::Utf8Value(property));
+		if (x != m_map->end()) {
 			x->second->m_tclvar = V8ToTcl(x->second->m_interp, value);
-			printf("\t\tBIND: converting V8 value to Tcl (%s)\n", Tcl_GetString(x->second->m_tclvar));
+			v8log("\t\tBIND: converting V8 value to Tcl (%s)\n", Tcl_GetString(x->second->m_tclvar));
 		} else {
 			std::string errmsg("GenericReader: Binding for ");
 						errmsg.append(*String::Utf8Value(property));
@@ -86,7 +90,11 @@ int jsEval(
 	int objc,
 	Tcl_Obj *const objv[]
 ){
-	printf("(%p) TclBinding::jsEval (interp=%p)\n", (void *)uv_thread_self(), interp);
+	v8log("TclBinding::jsEval (interp=%p)\n", interp);
+
+	// create a bindings map and store it in the current V8 Isolate
+	TclVariableBindingsMap varbindings;
+	v8::Isolate::GetCurrent()->SetData(0, &varbindings);
 
 	// validate input params
 	if ( (objc != 3) ) {
@@ -134,16 +142,16 @@ int jsEval(
 
 	int arglistLength;
 	Tcl_ListObjLength(interp, arglist, &arglistLength);
-	printf("arg list length == %d\n", arglistLength);
+	v8log("arg list length == %d\n", arglistLength);
 
 	for ( int i = 0; i < arglistLength; i++ ) {
 		// get the variable NAME
 		Tcl_Obj* varName;
 		Tcl_ListObjIndex(interp, arglist, i, &varName);
 		char* vn = Tcl_GetString(varName);
-		printf("\tbinding %s (idx: %d) to V8\n", vn, i);
-		// then get its value
-		TclVariableBinding* varbind = new TclVariableBinding(interp, varName);
+		v8log("binding %s (idx: %d) to V8\n", vn, i);
+		// then create a binding  and store it
+		varbindings[vn] = new TclVariableBinding(interp, varName);
 		global_templ->SetAccessor(
 				Nan::New<String>(vn).ToLocalChecked(),
 				TclVariableBinding::GenericReader,
@@ -155,22 +163,22 @@ int jsEval(
 	v8::Handle<v8::Script> jsSource = v8::Script::Compile(Nan::New<String>(javascript).ToLocalChecked());
 
 	// Run
-	printf("before run\n");
+	v8log("before run\n");
 	Nan::MaybeLocal<v8::Value> retv = jsSource->Run();
-	printf("after run\n");
+	v8log("after run\n");
 
 	// FIXME: make this reentrant, ie. stop using a static varmap (use thread locals instead)
 	TclVariableBindingsMap::const_iterator it;
 	for (it = varbindings.begin(); it != varbindings.end(); it++) {
 		TclVariableBinding* vb = it->second;
-		printf("reverse mapping of %s to Tcl...\n", it->first.c_str());
+		v8log("reverse mapping of %s to Tcl...\n", it->first.c_str());
 		Tcl_SetVar2Ex(vb->m_interp, it->first.c_str(), NULL, vb->m_tclvar, 0);
 		delete vb;
 	}
 	varbindings.clear();
 	if (!retv.IsEmpty()) {
 		std::string res(*String::Utf8Value(retv.ToLocalChecked()));
-		printf("\t\tResult == %s\n", res.c_str());
+		v8log("Result == %s\n", res.c_str());
 		Tcl_Obj* tclres = Tcl_NewStringObj(res.c_str(), res.size());
 		Tcl_SetObjResult(interp, tclres);
 	}
