@@ -5,16 +5,19 @@
  *      Author: ekarak
  */
 
+#include <iostream>
+
 #include "util.h"
 #include "jsEval.h"
 
 using namespace v8;
 
+
 Tcl_Interp* newTclInterp() {
 	// initialise Tcl interpreter
 	Tcl_Interp* _interp = Tcl_CreateInterp();
 
-	printf("%p: new Tcl interpreter: %p\n", (void*) uv_thread_self(), _interp);
+	v8log("new Tcl interpreter: %p\n", _interp);
 
 	if ( TCL_OK != Tcl_Init( _interp ) ) {
 		Nan::ThrowError( "Failed to initialise Tcl interpreter" );
@@ -92,7 +95,7 @@ Local<Value> TclToV8(Tcl_Interp* interp, Tcl_Obj* objPtr) {
 			int listLength;
 			Tcl_ListObjLength(interp, objPtr, &listLength);
 			Tcl_Obj* listItem;
-			printf("Tcl list, length=%d\n", listLength);
+			v8log("Tcl list, length=%d\n", listLength);
 			Local<Array> arr = Nan::New<Array>(listLength);
 			for (int i=0; i < listLength; i++) {
 				// add each item in the Tcl list into the V8 array
@@ -127,7 +130,7 @@ Local<Value> TclToV8(Tcl_Interp* interp, Tcl_Obj* objPtr) {
 			return v8obj;
 		}
 		else {
-			printf("TODO: TclToV8 %s\n", objPtr->typePtr->name);
+			v8log("TODO: TclToV8 %s\n", objPtr->typePtr->name);
 			//return nullptr;
 		}
 	}
@@ -158,7 +161,7 @@ Tcl_Obj* V8ToTcl(Tcl_Interp* interp, Value* v8v) {
 	} else if (v8v->IsArray()) {
 		// ===================
 		v8::Array*  arr = v8::Array::Cast(v8v);
-		printf("V8 Array, length=%d\n", arr->Length());
+		v8log("V8 Array, length=%d\n", arr->Length());
 		to = Tcl_NewObj();
 		// Tcl_NewListObj(arr->Length(), &to);
 		for (uint32_t i=0; i < arr->Length(); i++) {
@@ -171,13 +174,13 @@ Tcl_Obj* V8ToTcl(Tcl_Interp* interp, Value* v8v) {
 		// =====================================
 		to = Tcl_NewDictObj();
 		v8::Object*  v8o = v8::Object::Cast(v8v);
-		printf("***V8ToTcl: IsMap=%d IsObject=%d\n",v8v->IsMap(), v8v->IsObject());
+		v8log("***V8ToTcl: IsMap=%d IsObject=%d\n",v8v->IsMap(), v8v->IsObject());
 
 		Local<Array> property_names = v8o->GetOwnPropertyNames();
 		for (uint32_t i = 0; i < property_names->Length(); ++i) {
 		    Local<Value> key = property_names->Get(i);
 		    Local<Value> value = v8o->Get(key);
-		    printf("***V8ToTcl: \tprop: %s val: %s\n",
+		    v8log("***V8ToTcl: \tprop: %s val: %s\n",
 		    		*String::Utf8Value(key),
 					*String::Utf8Value(value));
 		    Tcl_DictObjPut(interp, to, V8ToTcl(interp, key), V8ToTcl(interp, value));
@@ -186,7 +189,7 @@ Tcl_Obj* V8ToTcl(Tcl_Interp* interp, Value* v8v) {
 	} else if (v8v->IsRegExp()) {
 		// ===================
 		// todo
-		printf("***V8ToTcl: TODO IsRegExp\n");
+		v8log("***V8ToTcl: TODO IsRegExp\n");
 	}
 	return to;
 }
@@ -195,13 +198,43 @@ Tcl_Obj* V8ToTcl(Tcl_Interp* interp, Local<Value> v8v) {
 	return V8ToTcl(interp, *v8v);
 }
 
-/*
- * Get a new instance of the V8 Engine (so conveniently called an 'Isolate')
- */
-v8::Isolate* newV8Isolate() {
-
-	printf("(%p) TaskRunner::worker: creating new v8::Isolate\n", (void *)uv_thread_self());
-	v8::Isolate* _isolate = Isolate::New();
-	return _isolate;
+static void gc_begin(GCType type, GCCallbackFlags flags){
+  std::cout << "GC begins: " << type << std::endl;
 }
 
+static void gc_end(GCType type, GCCallbackFlags flags){
+  std::cout << "GC ends: " << type << std::endl;
+}
+
+/*
+ * Get a new instance of the V8 Engine (so conveniently called an 'Isolate') and ENTER it.
+ * Its the caller's responsibility to properly call Exit() and Dispose()
+ */
+v8::Isolate* newV8Isolate() {
+	v8log("TaskRunner::worker: creating new v8::Isolate\n");
+	v8::Isolate* isolate = Isolate::New();
+	isolate->Enter();
+	// ekarak: add GC hints
+	V8::AddGCPrologueCallback(&gc_begin);
+	V8::AddGCEpilogueCallback(&gc_end);
+
+	return isolate;
+}
+
+// generic logging helper
+mutex stderr_mutex;
+void v8log(const char* format, ...) {
+
+    va_list argptr;
+    va_start(argptr, format);
+    uv_thread_t tid = uv_thread_self();
+    std::string f = std::string("\033[38;5;%dm(%p) \033[0m");
+    uint8_t colorcode = (tid / 0x1000) % 212;
+	{
+		mutex::scoped_lock sl(stderr_mutex);
+	    fprintf (stderr, f.c_str(), colorcode, (void*) tid);
+	    vfprintf(stderr, format, argptr);
+	    fflush  (stderr);
+	}
+    va_end(argptr);
+}
