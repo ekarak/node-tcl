@@ -5,7 +5,7 @@
 
 TclWorker::TclWorker( const char * cmd, Nan::Callback * callback )
 	: Nan::AsyncWorker( callback ), _cmd( cmd ) {
-		printf("(%p): new async TclWorker\n", (void*) uv_thread_self());
+	v8log("new async TclWorker\n");
 }
 
 

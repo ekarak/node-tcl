@@ -69,10 +69,10 @@ int objCmdProcDispatcher(
 
 	} else {
 
-		printf("\treturn value isEmpty=%d isUndefined=%d\n", retv.IsEmpty(), retv->IsUndefined());
+		v8log("return value isEmpty=%d isUndefined=%d\n", retv.IsEmpty(), retv->IsUndefined());
 		if ( !retv.IsEmpty() && !retv->IsUndefined() ) {
 			std::string res(*String::Utf8Value(retv));
-			printf("\t\tResult == %s\n", res.c_str());
+			v8log("Result == %s\n", res.c_str());
 			Tcl_SetObjResult(interp, V8ToTcl(interp, Local<Object>::Cast(retv)));
 		}
 		return TCL_OK;
@@ -92,7 +92,7 @@ void objCmdDeleteProcDispatcher(
 {
 	JsProxyBinding*  jsb = ((JsProxyBinding*) clientData);
 	std::string& cmdname = jsb->cmdname;
-	printf("objCmdDeleteProcDispatcher(%s)\n", cmdname.c_str());
+	v8log("objCmdDeleteProcDispatcher(%s)\n", cmdname.c_str());
 	// mark the persistent function handle as independent so that GC can pick this up
 	jsb->jsFunc.MarkIndependent();
 	_jsExports.erase(cmdname);

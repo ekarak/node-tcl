@@ -2,7 +2,7 @@
 #include "tclbinding.h"
 #include "tclnotifier.h"
 #include <cstring>
-#include <iostream>
+
 #include <functional>
 
 #ifdef HAS_TCL_THREADS
@@ -15,24 +15,10 @@
 #include "expose.h"
 #include "util.h"
 
-class MallocArrayBufferAllocator : public v8::ArrayBuffer::Allocator {
-  public:
-    virtual void* Allocate(size_t length) {
-        return calloc(length,1);
-    }
-    virtual void* AllocateUninitialized(size_t length) {
-        return malloc(length);
-    }
-    // XXX we assume length is not needed
-    virtual void Free(void*data, size_t length) {
-        free(data);
-    }
-};
-
 using namespace v8;
 
 // initialise static vars
-Nan::Persistent< v8::Function > TclBinding::constructor;
+Nan::Persistent< Function > TclBinding::constructor;
 
 TclBinding::TclBinding() {
 
@@ -57,25 +43,27 @@ TclBinding::~TclBinding() {
 
 }
 
+class MallocArrayBufferAllocator : public ArrayBuffer::Allocator {
+  public:
+    virtual void* Allocate(size_t length) {
+        return calloc(length,1);
+    }
+    virtual void* AllocateUninitialized(size_t length) {
+        return malloc(length);
+    }
+    // XXX we assume length is not needed
+    virtual void Free(void*data, size_t length) {
+        free(data);
+    }
+};
 
-static void gc_begin(GCType type, GCCallbackFlags flags){
-  std::cout << "GC begins: " << type << std::endl;
-}
 
-static void gc_end(GCType type, GCCallbackFlags flags){
-  std::cout << "GC ends: " << type << std::endl;
-}
-
-void TclBinding::init( v8::Local< v8::Object > exports ) {
+void TclBinding::init( Local< Object > exports ) {
 
 	/*
 	 * http://www.borisvanschooten.nl/blog/2014/06/23/typed-arrays-on-embedded-v8-2014-edition
 	 */
-	v8::V8::SetArrayBufferAllocator(new MallocArrayBufferAllocator());
-
-	// ekarak: add GC hints
-	v8::V8::AddGCPrologueCallback(&gc_begin);
-	v8::V8::AddGCEpilogueCallback(&gc_end);
+	V8::SetArrayBufferAllocator(new MallocArrayBufferAllocator());
 
 	// set up custom Tcl Event Loop
 	NodeTclNotify::setup();
@@ -84,7 +72,7 @@ void TclBinding::init( v8::Local< v8::Object > exports ) {
 	Nan::HandleScope scope;
 
 	// prepare constructor template
-	v8::Local< v8::FunctionTemplate > tpl = Nan::New< v8::FunctionTemplate >( construct );
+	Local< FunctionTemplate > tpl = Nan::New< FunctionTemplate >( construct );
 	tpl->SetClassName( Nan::New( "TclBinding" ).ToLocalChecked() );
 	tpl->InstanceTemplate()->SetInternalFieldCount( 1 );
 
@@ -101,14 +89,14 @@ void TclBinding::init( v8::Local< v8::Object > exports ) {
 }
 
 
-void TclBinding::construct( const Nan::FunctionCallbackInfo< v8::Value > &info ) {
+void TclBinding::construct( const Nan::FunctionCallbackInfo< Value > &info ) {
 
 	if (! info.IsConstructCall() ) {
 
 		// invoked as `TclBinding(...)`, convert to a constructor call
 		const int argc = 1;
-		v8::Local< v8::Value > argv[ argc ] = { info[0] };
-		v8::Local< v8::Function > c = Nan::New< v8::Function >( constructor );
+		Local< Value > argv[ argc ] = { info[0] };
+		Local< Function > c = Nan::New< Function >( constructor );
 		return info.GetReturnValue().Set( c->NewInstance( argc, argv ) );
 
 	}
@@ -120,7 +108,7 @@ void TclBinding::construct( const Nan::FunctionCallbackInfo< v8::Value > &info )
 }
 
 
-void TclBinding::cmd( const Nan::FunctionCallbackInfo< v8::Value > &info ) {
+void TclBinding::cmd( const Nan::FunctionCallbackInfo< Value > &info ) {
 
 	// validate input params
 	if ( info.Length() != 2 ) {
@@ -136,15 +124,15 @@ void TclBinding::cmd( const Nan::FunctionCallbackInfo< v8::Value > &info ) {
 	}
 
 
-	Nan::Callback * callback = new Nan::Callback( info[1].As< v8::Function >() );
+	Nan::Callback * callback = new Nan::Callback( info[1].As< Function >() );
 
 #ifdef HAS_TCL_THREADS
 	// schedule an async task
 	Nan::Utf8String cmd( info[0] );
 	Nan::AsyncQueueWorker( new TclWorker( *cmd, callback ) );
 #else
-	v8::Local< v8::Value > argv[] = {
-			Nan::Error( Nan::New< v8::String >( MSG_NO_TCL_THREADS ).ToLocalChecked() )
+	Local< Value > argv[] = {
+			Nan::Error( Nan::New< String >( MSG_NO_TCL_THREADS ).ToLocalChecked() )
 	};
 	callback->Call( 1, argv );
 #endif
@@ -154,7 +142,7 @@ void TclBinding::cmd( const Nan::FunctionCallbackInfo< v8::Value > &info ) {
 }
 
 
-void TclBinding::cmdSync( const Nan::FunctionCallbackInfo< v8::Value > &info ) {
+void TclBinding::cmdSync( const Nan::FunctionCallbackInfo< Value > &info ) {
 
 	// validate input params
 	if ( info.Length() < 1 ) {
@@ -205,8 +193,8 @@ void TclBinding::cmdSync( const Nan::FunctionCallbackInfo< v8::Value > &info ) {
 	    Tcl_DictObjGet(NULL, options, key, &stackTrace);
 	    Tcl_DictObjGet(NULL, options, key2, &errorCode);
 	    Tcl_DecrRefCount(key); Tcl_DecrRefCount(key2);
-	    printf("Tcl stacktrace:\n\t%s\n", Tcl_GetString(stackTrace));
-		printf("Tcl errorCode: %s\n", Tcl_GetString(errorCode));
+	    v8log("Tcl stacktrace:\n\t%s\n", Tcl_GetString(stackTrace));
+	    v8log("Tcl errorCode: %s\n", Tcl_GetString(errorCode));
 	    // v8 error object
 	    Local<Value> errobj = Nan::Error(Tcl_GetStringResult( binding->_interp ));
 	    // TODO: how to add properties into errobj
@@ -223,14 +211,14 @@ void TclBinding::cmdSync( const Nan::FunctionCallbackInfo< v8::Value > &info ) {
 
 	// return result as a string
 	const char * str_result = Tcl_GetString( result );
-	v8::Local< v8::String > r_string = Nan::New< v8::String >( str_result ).ToLocalChecked();
+	Local< String > r_string = Nan::New< String >( str_result ).ToLocalChecked();
 
 	info.GetReturnValue().Set( r_string );
 
 }
 
 
-void TclBinding::queue( const Nan::FunctionCallbackInfo< v8::Value > &info ) {
+void TclBinding::queue( const Nan::FunctionCallbackInfo< Value > &info ) {
 
 	// validate input params
 	if ( info.Length() != 2 ) {
@@ -246,7 +234,7 @@ void TclBinding::queue( const Nan::FunctionCallbackInfo< v8::Value > &info ) {
 	}
 
 
-	Nan::Callback * callback = new Nan::Callback( info[1].As< v8::Function >() );
+	Nan::Callback * callback = new Nan::Callback( info[1].As< Function >() );
 
 #if defined(HAS_CXX11) && defined(HAS_TCL_THREADS)
 	TclBinding * binding = ObjectWrap::Unwrap< TclBinding >( info.Holder() );
@@ -259,8 +247,8 @@ void TclBinding::queue( const Nan::FunctionCallbackInfo< v8::Value > &info ) {
 	Nan::Utf8String cmd( info[0] );
 	binding->_tasks->queue( * cmd, callback );
 #else
-	v8::Local< v8::Value > argv[] = {
-			Nan::Error( Nan::New< v8::String >( MSG_NO_THREAD_SUPPORT ).ToLocalChecked() )
+	Local< Value > argv[] = {
+			Nan::Error( Nan::New< String >( MSG_NO_THREAD_SUPPORT ).ToLocalChecked() )
 	};
 	callback->Call( 1, argv );
 #endif
@@ -270,7 +258,7 @@ void TclBinding::queue( const Nan::FunctionCallbackInfo< v8::Value > &info ) {
 }
 
 
-void TclBinding::toArray( const Nan::FunctionCallbackInfo< v8::Value > &info ) {
+void TclBinding::toArray( const Nan::FunctionCallbackInfo< Value > &info ) {
 
 	// validate input params
 	if ( info.Length() < 1 ) {
@@ -293,10 +281,10 @@ void TclBinding::toArray( const Nan::FunctionCallbackInfo< v8::Value > &info ) {
 	// attempt to parse as a Tcl list
 	if ( Tcl_ListObjGetElements( binding->_interp, obj, &objc, &objv ) == TCL_OK ) {
 
-		v8::Local< v8::Array > r_array = Nan::New< v8::Array >( objc );
+		Local< Array > r_array = Nan::New< Array >( objc );
 
 		for ( int i = 0; i < objc; i++ ) {
-			r_array->Set( i, Nan::New< v8::String >( Tcl_GetString( objv[i] ) ).ToLocalChecked() );
+			r_array->Set( i, Nan::New< String >( Tcl_GetString( objv[i] ) ).ToLocalChecked() );
 		}
 
 		return info.GetReturnValue().Set( r_array );
@@ -313,9 +301,9 @@ void TclBinding::toArray( const Nan::FunctionCallbackInfo< v8::Value > &info ) {
 * Javascript: tcl.expose( 'name', <javascript closure> )
 * exposes the JS function object to Tcl
 */
-void TclBinding::expose( const Nan::FunctionCallbackInfo< v8::Value > &info ) {
+void TclBinding::expose( const Nan::FunctionCallbackInfo< Value > &info ) {
 
-	printf("(%p) TclBinding::expose\n", (void *)uv_thread_self());
+	v8log("TclBinding::expose\n");
 
 	// validate input params
 	if ( (info.Length() != 2) || (!info[0]->IsString()) || (!info[1]->IsFunction()) ) {
@@ -328,11 +316,11 @@ void TclBinding::expose( const Nan::FunctionCallbackInfo< v8::Value > &info ) {
 	// get handle to JS function and its Tcl name
 	std::string  cmdname = (*String::Utf8Value( info[0]->ToString() ));
 
-/*	printf("exposing %s: identityHash=%d to interpreter %p\n",
+/*	v8log("exposing %s: identityHash=%d to interpreter %p\n",
 			cmdname.c_str(), fun->GetIdentityHash(), binding->_interp);
 */
 	if (_jsExports.count(cmdname)) {
-		printf("WARNING: expose() is overriding %s\n", cmdname.c_str());
+		v8log("WARNING: expose() is overriding %s\n", cmdname.c_str());
 	}
 
 	// create a copyable persistent handle to this function

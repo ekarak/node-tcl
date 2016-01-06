@@ -55,7 +55,6 @@ void TaskRunner::worker() {
 	task_t task;
 
 	_isolate = newV8Isolate();
-	_isolate->Enter();
 	
 	Tcl_Interp * interp = newTclInterp();
 	int status = Tcl_Init( interp );

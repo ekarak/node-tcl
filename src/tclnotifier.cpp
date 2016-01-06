@@ -4,7 +4,7 @@
  */
 
 #include "tclnotifier.h"
-
+#include "util.h"
 
 using namespace NodeTclNotify;
 
@@ -21,15 +21,13 @@ NodeTclNotify::HandlerMap m_handlers;
 
 #define log(msg) \
 	uint64_t t1 = uv_hrtime(); \
-	printf("(%p) (%ld) %s\n", (void *) uv_thread_self(), \
-			(t1-t0)/1000000, msg );
+	v8log("(%ld) %s\n", (t1-t0)/1000000, msg );
 
 
 // Store the requested callback and establish one or more QSocketNotifier objects to link the activity to it
 void NodeTclNotify::CreateFileHandler(int fd, int mask, Tcl_FileProc* proc,
 		ClientData clientData) {
-	printf("(%p) CreateFileHandler(fd=%d, mask=%d, proc=%lp)\n",
-			(void *) uv_thread_self(), fd, mask, proc);
+	v8log("CreateFileHandler(fd=%d, mask=%d, proc=%lp)\n", fd, mask, proc);
 	// find any existing handler and deactivate it
 	HandlerMap::iterator old_handler_it = m_handlers.find(fd);
 	if (old_handler_it != m_handlers.end()) {
@@ -68,8 +66,7 @@ void NodeTclNotify::CreateFileHandler(int fd, int mask, Tcl_FileProc* proc,
 
 // remove the handler for the given file descriptor and cancel its notifications
 void NodeTclNotify::DeleteFileHandler(int fd) {
-	printf("(%p) DeleteFileHandler\n",
-			(void *) uv_thread_self());
+	v8log("DeleteFileHandler\n");
 	NodeTclNotify::HandlerMap::iterator old_handler_it = m_handlers.find(fd);
 	if (old_handler_it != m_handlers.end()) {
 		//   old_handler_it->second->deleteLater();
@@ -81,12 +78,12 @@ void NodeTclNotify::DeleteFileHandler(int fd) {
 
 // find and execute handler for the given file descriptor and activity
 template<int TclActivityType> void perform_callback(int fd) {
-	printf("perform_callback\n");
+	v8log("perform_callback\n");
 	// find the handler
 	NodeTclNotify::HandlerMap::const_iterator handler_it = m_handlers.find(fd);
 	// check that it was found
 	if (handler_it == m_handlers.end()) {
-		printf("could not find a registered file handler for fd=%d\n", fd);
+		v8log("could not find a registered file handler for fd=%d\n", fd);
 		return;
 	}
 
@@ -95,15 +92,15 @@ template<int TclActivityType> void perform_callback(int fd) {
 
 }
 void NodeTclNotify::readReady(int fd) {
-	printf("(%p) readReady\n", (void *) uv_thread_self());
+	v8log("readReady\n");
 	perform_callback<TCL_READABLE>(fd);
 }
 void NodeTclNotify::writeReady(int fd) {
-	printf("(%p) writeReady\n", (void *) uv_thread_self());
+	v8log("writeReady\n");
 	perform_callback<TCL_WRITABLE>(fd);
 }
 void NodeTclNotify::exception(int fd) {
-	printf("(%p) exception\n", (void *) uv_thread_self());
+	v8log("exception\n");
 	perform_callback<TCL_EXCEPTION>(fd);
 }
 
@@ -111,8 +108,8 @@ void NodeTclNotify::exception(int fd) {
 int NodeTclNotify::WaitForEvent(CONST86 Tcl_Time* timePtr) {
 	int timeout;
 	if (timePtr) {
-		printf("(%p) WaitForEvent(%p => %ld:%ld)\n",
-				(void *) uv_thread_self(), timePtr, timePtr->sec, timePtr->usec);
+		v8log("WaitForEvent(%p => %ld:%ld)\n",
+				timePtr, timePtr->sec, timePtr->usec);
 
 		timeout = timePtr->sec * 1000 + timePtr->usec / 1000;
 		if (timeout == 0) {
@@ -145,18 +142,17 @@ void NodeTclNotify::SetTimer(CONST86 Tcl_Time* timePtr) {
 	if (timePtr && ((timePtr->sec > 0) || (timePtr->usec > 0))) {
 		// set new timer interval in **microseconds**
 		uint64_t timeout = (timePtr->sec * 1000000) + timePtr->usec;
-		printf("(%p) SetTimer(%p => %.6f sec)\n",
-				(void *) uv_thread_self(), timePtr, (float)timeout/(float)1000000);
+		v8log("SetTimer(%p => %.6f sec)\n",
+				timePtr, (float)timeout/(float)1000000);
 		uint64_t t1 = uv_hrtime(); // nanoseconds
 		//
 		if (abs(timer_next_firing - ((t1/1000) + timeout)) > TIMERDELTA) {
 			//
 			if (timer_next_firing > 0) {
-				printf("(%p)\tstopping previous timer\n", (void *) uv_thread_self());
+				v8log("stopping previous timer\n");
 				uv_timer_stop(&m_timer);
 			}
-			printf("(%p) (%ld)\tsetting timer to fire in %ld millisec %ld %ld diff = %ld\n",
-					(void *) uv_thread_self(),
+			v8log("(%ld)\tsetting timer to fire in %ld millisec %ld %ld diff = %ld\n",
 					(t1-t0)/1000000,
 					timeout/1000,
 					timer_next_firing, (t1/1000) + timeout,
@@ -173,7 +169,7 @@ void NodeTclNotify::SetTimer(CONST86 Tcl_Time* timePtr) {
 
 
 void walk_cb(uv_handle_t* handle, void* arg) {
-	printf("\t(type: %d) (active: %d) (haas ref:%d) : %p\n",
+	v8log("\t(type: %d) (active: %d) (haas ref:%d) : %p\n",
 			handle->type, uv_is_active(handle),uv_has_ref(handle), handle);
 }
 
@@ -181,21 +177,19 @@ int idlecount = 0;
 // What to do after the requested interval passes - always Tcl_ServiceAll()
 void NodeTclNotify::handle_timer(uv_timer_s* timer) {
 	uint64_t t1 = uv_hrtime();
-	printf("(%p) (%ld) handle_timer, entering Tcl...\n", (void *) uv_thread_self(),
-			(t1-t0)/1000000 );
+	v8log("(%ld) handle_timer, entering Tcl...\n",	(t1-t0)/1000000 );
 	Tcl_SetServiceMode(TCL_SERVICE_ALL);
 	int x = Tcl_ServiceAll();
 	uint64_t t2 = uv_hrtime();
-	printf("(%p) (%ld)\tTcl serviced %d events in %d usec\n", uv_thread_self(),
-			(t2-t0)/1000000, x, (t2-t1)/1000);
+	v8log("(%ld)\tTcl serviced %d events in %d usec\n", (t2-t0)/1000000, x, (t2-t1)/1000);
 	//uv_loop_t*  dl = uv_default_loop();
 	uv_handle_t* h = (uv_handle_t*) &m_timer_async;
-	//printf("active handles:%d\n", 	dl->active_handles);
+	//v8log("active handles:%d\n", 	dl->active_handles);
 	//uv_walk(dl, &walk_cb, 0);
 	idlecount = (x == 0) ? idlecount + 1 : 0;
 	if (idlecount > 2 && !uv_is_closing(h)) {
 		idlecount = 0;
-		printf("\t CLOSING uv_acync_t handle...\n");
+		v8log("\t CLOSING uv_acync_t handle...\n");
 		uv_close(h, NULL);
 		uv_timer_stop(timer);
 	}
@@ -203,8 +197,7 @@ void NodeTclNotify::handle_timer(uv_timer_s* timer) {
 
 // (v8 thread): reset the UV timer
 void NodeTclNotify::timer_async_callback(uv_async_t* handle) {
-	printf("\n(%p) timer_async_callback(%p)\n", (void *) uv_thread_self(),
-			handle);
+	v8log("timer_async_callback(%p)\n", handle);
 //	resetTimer();
 	//	uv_mutex_lock(&timer_mutex);
 	// pop timePtr from queue / map / whatever
@@ -216,30 +209,30 @@ void NodeTclNotify::timer_async_callback(uv_async_t* handle) {
 // we don't use the client data information for this notifier
 // This could be helpful for multi-thread support, though. TBD
 void* NodeTclNotify::InitNotifier() {
-	printf("InitNotifier\n");
+	v8log("InitNotifier\n");
 	return 0;
 }
 
 void NodeTclNotify::AlertNotifier(ClientData cd) {
-	printf("AlertNotifier\n");
+	v8log("AlertNotifier\n");
 }
 
 void NodeTclNotify::FinalizeNotifier(ClientData cd) {
-	printf("FinalizeNotifier\n");
+	v8log("FinalizeNotifier\n");
 }
 
 // Can't find any examples of how this should work.  Unix implementation is empty
 void NodeTclNotify::ServiceModeHook(int p) {
-	printf("(%p) ServiceModeHook (%d)\n",(void *) uv_thread_self(), p);
+	v8log("ServiceModeHook (%d)\n", p);
 }
 
 // only one method for NodeTclFileHandler - executing the callback (with type check)
 void NodeTclFileHandler::perform_callback(int type, int fd // only for debug - remove?
 		) {
-	printf("perform_callback\n");
+	v8log("perform_callback\n");
 	// check that the mask includes the actual activity we had
 	if (!(m_mask & type)) {
-		printf("signal type received (%d) for fd %d should not be active!",
+		v8log("signal type received (%d) for fd %d should not be active!",
 				type, fd);
 		return;
 	}
@@ -250,7 +243,7 @@ void NodeTclFileHandler::perform_callback(int type, int fd // only for debug - r
 
 // Tell Tcl to replace its default notifier with ours
 void NodeTclNotify::setup() {
-	printf("(%p) setup()\n", (void *) uv_thread_self());
+	v8log("NodeTclNotify::setup()\n");
 	Tcl_NotifierProcs notifier;
 	notifier.setTimerProc     = NodeTclNotify::SetTimer;
 	notifier.waitForEventProc = NodeTclNotify::WaitForEvent;
