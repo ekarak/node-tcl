@@ -54,6 +54,7 @@ void TaskRunner::worker() {
 
 	task_t task;
 
+	v8log("TaskRunner::worker() creating new v8::Isolate\n");
 	_isolate = newV8Isolate();
 	
 	Tcl_Interp * interp = newTclInterp();

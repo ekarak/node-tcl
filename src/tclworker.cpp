@@ -31,9 +31,8 @@ void TclWorker::HandleOKCallback() {
 
 
 void TclWorker::Execute() {
-
+	v8log("TclWorker::Execute() creating new v8::Isolate\n");
 	_isolate = newV8Isolate();
-	_isolate->Enter();
 	
 	// initialise a new Tcl interpreter for the thread
 	Tcl_Interp * interp = newTclInterp();
@@ -56,4 +55,6 @@ void TclWorker::Execute() {
 	// cleanup
 	Tcl_DeleteInterp( interp );
 
+	_isolate->Exit();
+	_isolate->Dispose();
 }

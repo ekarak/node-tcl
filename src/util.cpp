@@ -120,7 +120,7 @@ Local<Value> TclToV8(Tcl_Interp* interp, Tcl_Obj* objPtr) {
 			}
 			for (; done == 0; Tcl_DictObjNext(&search, &key, &value, &done))
 			{
-				//printf("Mapping dict %s => %s\n", Tcl_GetString(key), Tcl_GetString(value));
+				v8log("Mapping dict %s => %s\n", Tcl_GetString(key), Tcl_GetString(value));
 				Nan::Set(v8obj,
 					Nan::New<String>(Tcl_GetString(key)).ToLocalChecked(),
 					TclToV8(interp, value)
@@ -211,7 +211,6 @@ static void gc_end(GCType type, GCCallbackFlags flags){
  * Its the caller's responsibility to properly call Exit() and Dispose()
  */
 v8::Isolate* newV8Isolate() {
-	v8log("TaskRunner::worker: creating new v8::Isolate\n");
 	v8::Isolate* isolate = Isolate::New();
 	isolate->Enter();
 	// ekarak: add GC hints
@@ -224,7 +223,6 @@ v8::Isolate* newV8Isolate() {
 // generic logging helper
 mutex stderr_mutex;
 void v8log(const char* format, ...) {
-
     va_list argptr;
     va_start(argptr, format);
     uv_thread_t tid = uv_thread_self();
@@ -232,7 +230,9 @@ void v8log(const char* format, ...) {
     uint8_t colorcode = (tid / 0x1000) % 212;
 	{
 		mutex::scoped_lock sl(stderr_mutex);
+		// prefix
 	    fprintf (stderr, f.c_str(), colorcode, (void*) tid);
+	    // actual message
 	    vfprintf(stderr, format, argptr);
 	    fflush  (stderr);
 	}
