@@ -11,7 +11,7 @@ TaskRunner::TaskRunner() : _terminate( false ) {
 
 	printf("(%p): new async TaskRunner => new worker thread=%p\n",
 	 	(void*) uv_thread_self(),
-		_worker.native_handle());
+		(void*) _worker.native_handle());
 }
 
 
@@ -50,13 +50,29 @@ void TaskRunner::queue( const char * cmd, Nan::Callback * callback ) {
 }
 
 
+/*
+ * worker thread
+ */
 void TaskRunner::worker() {
 
 	task_t task;
 
-	v8log("TaskRunner::worker() creating new v8::Isolate\n");
-	_isolate = newV8Isolate();
-	
+	v8log("TaskRunner::worker() creating new Node.JS worker\n");
+	worker_isolate = newV8Isolate();
+	worker_loop = uv_loop_new();
+	uv_loop_init(worker_loop);
+	//uv_loop_configure()
+
+	// new v8 global template
+	Handle<ObjectTemplate> global_templ = ObjectTemplate::New(worker_isolate);
+
+	// Create and Enter a new context for compiling and running the script.
+	Handle<Context> context = Context::New(worker_isolate, NULL, global_templ);
+	context->Enter();
+
+	//
+	worker_node = node::CreateEnvironment(worker_isolate, worker_loop, context, 0, nullptr,0, nullptr);
+
 	Tcl_Interp * interp = newTclInterp();
 	int status = Tcl_Init( interp );
 
@@ -93,7 +109,8 @@ void TaskRunner::worker() {
 
 	// cleanup
 	Tcl_DeleteInterp( interp );
-
+/*
 	_isolate->Exit();
 	_isolate->Dispose();
+	*/
 }

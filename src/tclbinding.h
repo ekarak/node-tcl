@@ -27,10 +27,10 @@ private:
 	static void queue( const Nan::FunctionCallbackInfo< v8::Value > &info );
 	static void toArray( const Nan::FunctionCallbackInfo< v8::Value > &info );
 	static void expose( const Nan::FunctionCallbackInfo< v8::Value > &info );
-	static int jsEval(ClientData, Tcl_Interp *, int, Tcl_Obj * const objv[]);
+	static int  jsEval(ClientData, Tcl_Interp *, int, Tcl_Obj * const objv[]);
 	static Nan::Persistent< v8::Function > constructor;
 
-	Tcl_Interp * _interp;
+	Tcl_Interp * rootInterp;
 
 #if defined(HAS_CXX11) && defined(HAS_TCL_THREADS)
 	TaskRunner * _tasks;

@@ -41,7 +41,9 @@ private:
 	std::condition_variable _worker_cnd;
 	
 	//
-	v8::Isolate* _isolate;
+	v8::Isolate* 		worker_isolate;
+	uv_loop_t*   		worker_loop;
+	node::Environment* 	worker_node;
 };
 
 #endif /*! TASKRUNNER_H */

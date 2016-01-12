@@ -7,8 +7,35 @@ node-tcl
 [![Dependency Status](https://david-dm.org/nukedzn/node-tcl.svg)](https://david-dm.org/nukedzn/node-tcl)
 [![devDependency Status](https://david-dm.org/nukedzn/node-tcl/dev-status.svg)](https://david-dm.org/nukedzn/node-tcl#info=devDependencies)
 
-Node.js Tcl bindings to execute Tcl commands using a native Tcl Interpreter.
+Bidirectional Node.js to Tcl binding aiming for giving new life to your Tcl scripts. It extends both  Node.JS *and* the Tcl language interpreter to bind the two environments together.
 
+- synchronous and asynchronous **invocation of Tcl scripts** from Javascript:
+```js
+tcl.cmdSync( "puts Hello...; after 100 {puts World!};" );
+tcl.cmd( "info version", function(err, result) {
+	if (err) {
+		console.log("Error:"+err);
+	} else {
+		console.log("Tcl version is: "+result);
+	}
+})
+```
+- or the other way around, **invocation of Javascript methods from Tcl**, either by "exposing" them to the Tcl interpreter:
+```js
+tcl.expose( 'square', function(n) { return n*n; });
+```
+which can then be used by Tcl as a command:
+```tcl
+puts "The square of 8 is [square 8]"
+```
+
+- or by **directly** embedding Javascript in your Tcl:
+```tcl
+set lst [list 66 33 44 55]
+set min [jsEval [list lst] {
+	Math.min.apply( Math, lst );
+}]
+```
 
 ## Dependencies
 
@@ -166,4 +193,3 @@ JSDoc generated API documentation can be found at [http://nukedzn.github.io/node
 ## Contributing
 
 Contributions are welcome through GitHub pull requests ([using fork & pull model](https://help.github.com/articles/using-pull-requests/#fork--pull)).
-

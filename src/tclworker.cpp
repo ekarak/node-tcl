@@ -2,15 +2,19 @@
 #include "tclworker.h"
 #include "jsEval.h"
 #include "util.h"
+#include "NodeTclContext.h"
+
+using namespace v8;
 
 TclWorker::TclWorker( const char * cmd, Nan::Callback * callback )
 	: Nan::AsyncWorker( callback ), _cmd( cmd ) {
 	v8log("new async TclWorker\n");
+
 }
 
 
 TclWorker::~TclWorker() {
-
+	_ntc.isolate->Dispose();
 }
 
 
@@ -31,11 +35,12 @@ void TclWorker::HandleOKCallback() {
 
 
 void TclWorker::Execute() {
-	v8log("TclWorker::Execute() creating new v8::Isolate\n");
-	_isolate = newV8Isolate();
+	v8log("TclWorker::Execute()\n");
+
+	_ntc.context->Enter();
 	
 	// initialise a new Tcl interpreter for the thread
-	Tcl_Interp * interp = newTclInterp();
+	Tcl_Interp * interp = newTclInterp((ClientData*) &_ntc);
 
 	if ( TCL_OK == Tcl_Init( interp ) ) {
 
@@ -55,6 +60,5 @@ void TclWorker::Execute() {
 	// cleanup
 	Tcl_DeleteInterp( interp );
 
-	_isolate->Exit();
-	_isolate->Dispose();
+	_ntc.isolate->Exit();
 }

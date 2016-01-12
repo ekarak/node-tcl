@@ -97,3 +97,20 @@ void objCmdDeleteProcDispatcher(
 	jsb->jsFunc.MarkIndependent();
 	_jsExports.erase(cmdname);
 };
+
+void innerExpose(Tcl_Interp* interp, const char* cmdname, JsProxyBinding* jsb) {
+	v8log("exposing %s to interpreter %p\n", cmdname, interp);
+	if (_jsExports.count(cmdname)) {
+		v8log("WARNING: expose() is overriding %s\n", cmdname);
+	}
+
+	jsb->tclcmd = Tcl_CreateObjCommand(
+		interp,
+		cmdname,
+		&objCmdProcDispatcher,
+		jsb, // clientData,
+		&objCmdDeleteProcDispatcher
+	);
+
+	_jsExports[cmdname] = jsb;
+}

@@ -6,6 +6,7 @@
 #include <string>
 #include <tcl.h>
 #include "v8.h"
+#include "NodeTclContext.h"
 
 class TclWorker : public Nan::AsyncWorker {
 public:
@@ -25,7 +26,7 @@ private:
 	std::string _cmd;
 	std::string _result;
 	//
-	v8::Isolate* _isolate;
+	NodeTclContext _ntc;
 };
 
 #endif /* !TCLWORKER_H */

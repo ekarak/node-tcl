@@ -11,10 +11,9 @@
 #include "tcl.h"
 #include "nan.h"
 #include "tclbinding.h"
+#include "node.h"
 
-// a class for wrapping the bindings of Tcl variables into Gorgoroth (V8 land)
-class TclVariableBinding;
-typedef std::map<std::string, TclVariableBinding*> TclVariableBindingsMap;
+
 
 int jsEval(ClientData clientData, // (JsProxyBinding*)
 		Tcl_Interp *interp,

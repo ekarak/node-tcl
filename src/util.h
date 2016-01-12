@@ -8,13 +8,11 @@
 #ifndef SRC_UTIL_H_
 #define SRC_UTIL_H_
 
-#include <map>
-
 #include "nan.h"
 #include "tcl.h"
 
 //
-Tcl_Interp* newTclInterp();
+Tcl_Interp* newTclInterp(ClientData* cd = NULL);
 
 // convert any Tcl value into a v8 value
 v8::Local<v8::Value> TclToV8(Tcl_Interp*, Tcl_Obj*);
@@ -28,6 +26,8 @@ v8::Isolate* newV8Isolate();
 
 // generic logger
 void v8log(const char* format, ...);
+
+void handleTclError(Tcl_Interp* interp, uint8_t code);
 
 #include <unistd.h>
 #include <pthread.h>

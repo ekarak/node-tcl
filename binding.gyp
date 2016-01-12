@@ -10,8 +10,10 @@
 		{
 			'target_name': 'tcl',
 			'sources': [
+				'src/NodeTclContext.cpp',
 				'src/tclbinding.cpp',
 				'src/tclnotifier.cpp',
+				'src/TclVariableBinding.cpp',
 				'src/expose.cpp',
 				'src/jsEval.cpp',
 				'src/util.cpp',

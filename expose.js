@@ -34,11 +34,14 @@ tcl.cmdSync( 'puts "About to throw a JS exception..."; if {[catch puke msg]} {pu
 //}
 //tcl.cmdSync( "set fd [open /proc/cpuinfo]; set str [read $fd]; close $fd; puts \"Read [string length $str] bytes\"" );
 tcl.cmd( "set lst [list 66 33 44 55]; return [jsEval [list lst] { Math.min.apply( Math, lst ); }]", function(err, res) {
-	console.log("1 err:" + err + " result:" + res);
+	console.log("1 err:" + err + " result: " + res);
 } );
 tcl.cmd( "set dct [dict create a 1 b 2]; return [jsEval [list dct] { dct.a + dct.b }]" , function(err, res) {
-	console.log("2 err:" + err + " result:" + res);
+	console.log("2 err:" + err + " result: " + res);
 } );
 tcl.cmd( "set dct [dict create a 1 b 2]; return [jsEval [list dct] { dct = {a: {subelem1: {tree1: 1, tree2: 2}, subelem2: 20}, b: 200} }]", function(err, res) {
-	console.log("3 err:" + err + " result:" + res);
+	console.log("3 err:" + err + " result: " + typeof(res) + ":"+ JSON.stringify(res));
+} );
+tcl.cmd( "jsEval [list] { console.log('foo'); }", function(err, res) {
+	console.log("4 err:" + err + " result: " + res);
 } );

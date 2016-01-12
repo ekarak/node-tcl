@@ -38,5 +38,6 @@ int objCmdProcDispatcher(
 
 // disposer
 void objCmdDeleteProcDispatcher(ClientData clientData);
+void innerExpose(Tcl_Interp* interp, const char* cmdname, JsProxyBinding* jsb);
 
 #endif /* SRC_EXPOSE_H_ */
