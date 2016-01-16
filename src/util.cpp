@@ -130,8 +130,8 @@ Local<Value> TclToV8(Tcl_Interp* interp, Tcl_Obj* objPtr) {
 		}
 		else {
 			v8log("TODO: TclToV8 %s\n", objPtr->typePtr->name);
-			//return nullptr;
 		}
+		return Nan::New<Object>();
 	}
 }
 
@@ -286,4 +286,3 @@ void handleTclError(Tcl_Interp* interp, uint8_t code) {
 	// TODO: add columnNumber, lineNumber, fileName, stack, toSource() ?
 	Nan::ThrowError( errobj );
 }
-

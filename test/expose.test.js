@@ -10,34 +10,36 @@ describe( 'TclBinding', function () {
 
 	context( 'expose', function () {
 
+		it( 'should add the expose() method to the Tcl binding', function () {
+			expect( tclb.expose ).to.be.a.method;
+		});
+
 		it( 'should return values from JS functions exposed to the Tcl interp', function () {
 			var result;
-
 			try {
 				tclb.expose( 'square', function(n) { return n*n; } );
 				result = tclb.cmdSync('square 8');
 			} catch ( e ) {
 				result = e;
 			}
-			expect( result == 64 );
-		} );
+			expect( result === 64 );
+		});
 
-		it( 'should properly handle errors thrown from JS', function () {
+		it( 'Tcl interp should properly handle errors thrown from JS', function () {
 			var result;
- 
+
 			try {
 				tclb.expose( 'puke', function() { throw "Danger!"; } );
-				result = tclb.cmdSync( 'if {[catch puke msg]} {return puked}' );	
+				result = tclb.cmdSync( 'if {[catch puke msg]} {return puked}' );
 			} catch ( e ) {
 				result = e;
 			}
-			
-			expect( result == 'puked' );
+
+			expect( result === 'puked' );
 		} );
 
 		it( 'should properly propagate errors thrown from JS', function () {
 			var result;
-			
 			try {
 				tclb.cmdSync( 'puke' );
 			} catch ( e ) {

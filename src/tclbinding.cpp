@@ -26,8 +26,9 @@ TclBinding::TclBinding() {
 	_tasks = nullptr;
 #endif
 
-	// initialise Tcl interpreter
+	// initialise the root Tcl interpreter
 	rootInterp = newTclInterp();
+	v8log("new TclBinding %p\n", this);
 }
 
 TclBinding::~TclBinding() {
@@ -67,7 +68,7 @@ void TclBinding::init( Local< Object > exports ) {
 
 	// set up custom Tcl Event Loop
 	NodeTclNotify::setup();
-	
+
 	// stack-allocated handle scope
 	Nan::HandleScope scope;
 
