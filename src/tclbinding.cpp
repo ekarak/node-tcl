@@ -57,8 +57,19 @@ class MallocArrayBufferAllocator : public ArrayBuffer::Allocator {
     }
 };
 
-
+uv_lib_t tclso;
 void TclBinding::init( Local< Object > exports ) {
+
+	v8log("uv_dlopen %s\n", stringify(TCL_DLLIB));
+	// open the TCL shared library
+  if (uv_dlopen( stringify(TCL_DLLIB), &tclso) == -1) {
+		v8log("uv_dlopen %s failed: %s\n", stringify(TCL_DLLIB), uv_dlerror(&tclso));
+	}
+	void* ptr;
+	v8log("uv_dlsym\n");
+	if (uv_dlsym(&tclso, "Tcl_GetChannelHandle", &ptr) == -1) {
+		v8log("uv_dlsym failed: %s\n", uv_dlerror(&tclso));
+	}
 
 	/*
 	 * http://www.borisvanschooten.nl/blog/2014/06/23/typed-arrays-on-embedded-v8-2014-edition
@@ -67,7 +78,7 @@ void TclBinding::init( Local< Object > exports ) {
 
 	// set up custom Tcl Event Loop
 	NodeTclNotify::setup();
-	
+
 	// stack-allocated handle scope
 	Nan::HandleScope scope;
 
@@ -217,22 +228,23 @@ void TclBinding::cmdSync( const Nan::FunctionCallbackInfo< Value > &info ) {
 
 }
 
-
+// binding.queue([tclcommand, arg1, arg2, ...], callback)
 void TclBinding::queue( const Nan::FunctionCallbackInfo< Value > &info ) {
 
 	// validate input params
 	if ( info.Length() != 2 ) {
 		return Nan::ThrowError( "Invalid number of arguments" );
 	}
-
-	if (! info[0]->IsString() ) {
-		return Nan::ThrowTypeError( "Tcl command must be a string" );
+	if (! info[0]->IsArray() ) {
+		return Nan::ThrowTypeError( "1st argument must be an array" );
 	}
-
 	if (! info[1]->IsFunction() ) {
 		return Nan::ThrowTypeError( "Callback must be a function" );
 	}
 
+	v8log("preparing new task for '%s', info.length=%d\n",
+		*Nan::Utf8String( info[0] ),
+		info.Length());
 
 	Nan::Callback * callback = new Nan::Callback( info[1].As< Function >() );
 
@@ -243,9 +255,21 @@ void TclBinding::queue( const Nan::FunctionCallbackInfo< Value > &info ) {
 		binding->_tasks = new TaskRunner();
 	}
 
-	// queue the task
-	Nan::Utf8String cmd( info[0] );
-	binding->_tasks->queue( * cmd, callback );
+	// prepare the task struct
+	TaskRunner::task_t * task = new TaskRunner::task_t;
+
+	// Get the full argument vector (incl the command)
+	Local<Array> arr = info[0].As<Array>();
+	task->argc = arr->Length();
+
+	// FIXME: we're using the root interp here
+	task->argv = V8ToTcl(binding->_interp, arr);
+	task->handler = new AsyncHandler( callback );
+
+	// add the task to the queue
+	v8log("pushing new task to the TaskRunner queue, argc=%d\n", task->argc);
+	binding->_tasks->queue( task );
+
 #else
 	Local< Value > argv[] = {
 			Nan::Error( Nan::New< String >( MSG_NO_THREAD_SUPPORT ).ToLocalChecked() )
@@ -303,8 +327,6 @@ void TclBinding::toArray( const Nan::FunctionCallbackInfo< Value > &info ) {
 */
 void TclBinding::expose( const Nan::FunctionCallbackInfo< Value > &info ) {
 
-	v8log("TclBinding::expose\n");
-
 	// validate input params
 	if ( (info.Length() != 2) || (!info[0]->IsString()) || (!info[1]->IsFunction()) ) {
 		return Nan::ThrowTypeError( "Usage: expose(name, function)" );
@@ -316,9 +338,9 @@ void TclBinding::expose( const Nan::FunctionCallbackInfo< Value > &info ) {
 	// get handle to JS function and its Tcl name
 	std::string  cmdname = (*String::Utf8Value( info[0]->ToString() ));
 
-/*	v8log("exposing %s: identityHash=%d to interpreter %p\n",
-			cmdname.c_str(), fun->GetIdentityHash(), binding->_interp);
-*/
+	v8log("TclBinding::expose %s to interpreter %p\n",
+			cmdname.c_str(), binding->_interp);
+
 	if (_jsExports.count(cmdname)) {
 		v8log("WARNING: expose() is overriding %s\n", cmdname.c_str());
 	}

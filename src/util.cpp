@@ -131,9 +131,9 @@ Local<Value> TclToV8(Tcl_Interp* interp, Tcl_Obj* objPtr) {
 		}
 		else {
 			v8log("TODO: TclToV8 %s\n", objPtr->typePtr->name);
-			//return nullptr;
 		}
 	}
+	return Nan::Undefined();
 }
 
 /* Maps ANY V8/Javascript object to its Tcl equivalent

@@ -66,7 +66,7 @@ void NodeTclNotify::CreateFileHandler(int fd, int mask, Tcl_FileProc* proc,
 
 // remove the handler for the given file descriptor and cancel its notifications
 void NodeTclNotify::DeleteFileHandler(int fd) {
-	v8log("DeleteFileHandler\n");
+	//v8log("DeleteFileHandler\n");
 	NodeTclNotify::HandlerMap::iterator old_handler_it = m_handlers.find(fd);
 	if (old_handler_it != m_handlers.end()) {
 		//   old_handler_it->second->deleteLater();

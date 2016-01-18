@@ -18,8 +18,12 @@
 			],
 			'variables': {
 				'tclthreads': '<!(. <(tclconfig) && echo ${TCL_THREADS})',
+				'tcldllib':   '<!(. <(tclconfig) && echo ${TCL_EXEC_PREFIX}/lib/${TCL_LIB_FILE})',
 				'cxx': '<!(bash gyp/cxx.sh)'
 			},
+			'defines': [
+				'TCL_DLLIB=<(tcldllib)',
+			],
 			'conditions': [
 				[ 'OS=="mac"', {
 					'xcode_settings': {

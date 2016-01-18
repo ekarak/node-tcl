@@ -30,7 +30,6 @@ int objCmdProcDispatcher(
 	}
 	Local<Value> args = Local<Value>::Cast(jsFunctionArgs);
 
-	// doo the doo
 	Nan::TryCatch tc;
 	// rematerialize handle to JS function
 	v8::Local<v8::Function> function = v8::Local<v8::Function>::New(
@@ -80,8 +79,6 @@ int objCmdProcDispatcher(
 	}
 
 	// must return TCL_OK, TCL_ERROR, TCL_RETURN, TCL_BREAK, or TCL_CONTINUE.
-
-
 };
 
 /* Tcl_CmdDeleteProc: Procedure to call before cmdName is deleted from the

@@ -138,7 +138,7 @@ describe( 'tcl', function () {
 		} );
 
 		it( 'should handle errors', function ( done ) {
-			tcl.queue( 'error {test error}', function ( err, data ) {
+			tcl.queue( 'error' , ["test error"], function ( err, data ) {
 				expect( err ).to.be.an.instanceof( Error );
 				expect( err.message ).to.be.string( 'test error' );
 				done();
@@ -230,4 +230,3 @@ describe( 'Tcl', function () {
 	} );
 
 } );
-
