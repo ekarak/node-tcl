@@ -11,7 +11,7 @@ TaskRunner::TaskRunner() : _terminate( false ) {
 
 	printf("(%p): new async TaskRunner => new worker thread=%p\n",
 	 	(void*) uv_thread_self(),
-		_worker.native_handle());
+		(void*) _worker.native_handle());
 }
 
 
@@ -29,19 +29,14 @@ TaskRunner::~TaskRunner() {
 }
 
 
-void TaskRunner::queue( const char * cmd, Nan::Callback * callback ) {
-
-	task_t task = {
-		cmd,
-		new AsyncHandler( callback )
-	};
+void TaskRunner::queue( const task_t* task ) {
 
 	{
 		std::unique_lock< std::mutex > lock( _task_mutex );
 		_tasks.push( task );
 
 		// schedule an async worker outside of main event loop
-		Nan::AsyncQueueWorker( task.handler );
+		Nan::AsyncQueueWorker( task->handler );
 	}
 
 	// notify worker thread
@@ -52,14 +47,17 @@ void TaskRunner::queue( const char * cmd, Nan::Callback * callback ) {
 
 void TaskRunner::worker() {
 
-	task_t task;
+	const task_t* task;
 
 	v8log("TaskRunner::worker() creating new v8::Isolate\n");
 	_isolate = newV8Isolate();
-	
+	// lock the v8 isolate for this thread
+	Locker locker(_isolate);
+
+  v8log("TaskRunner::worker() creating new Tcl interp\n");
 	Tcl_Interp * interp = newTclInterp();
 	int status = Tcl_Init( interp );
-
+  v8log("TaskRunner::worker() before main loop\n");
 	while (! _terminate ) {
 
 		{
@@ -75,20 +73,33 @@ void TaskRunner::worker() {
 			task = _tasks.front();
 			_tasks.pop();
 		}
-
+		v8log("TaskRunner::worker() popped new task\n");
 
 		if ( status == TCL_OK ) {
-
-			if ( Tcl_EvalEx( interp, task.cmd.c_str(), -1, 0 ) == TCL_ERROR ) {
-				task.handler->notify( Tcl_GetStringResult( interp ), "" );
+			int taskResultCode;
+		/*	if (task->argc == 1) {
+				// no arguments passed, use EvalEx
+				v8log("TaskRunner::worker() calling Tcl_EvalEx\n");
+				taskResultCode = Tcl_EvalEx( interp, Tcl_GetString(task->argv), -1, 0 );
+			} else { */
+				v8log("TaskRunner::worker() calling Tcl_EvalObjEx, argc=%d, argv=%s\n",
+				task->argc,  Tcl_GetString(task->argv));
+				taskResultCode = Tcl_EvalObjEx( interp, task->argv,  TCL_EVAL_GLOBAL | TCL_EVAL_DIRECT );
+			//}
+			const char* result = Tcl_GetStringResult( interp );
+			if ( taskResultCode == TCL_ERROR ) {
+				v8log("*** TCL_ERROR: %s\n", result);
+				// FIXME: proper JS error, not just a string message
+				task->handler->notify( result, "" );
 			} else {
-				task.handler->notify( "", Tcl_GetStringResult( interp ) );
+				task->handler->notify( "", result );
 			}
 
 		} else {
-			task.handler->notify( "Failed to initialise Tcl interpreter", "" );
+			task->handler->notify( "Failed to initialise Tcl interpreter", "" );
 		}
 
+		delete task;
 	}
 
 	// cleanup

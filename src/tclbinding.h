@@ -11,7 +11,8 @@
 #include "taskrunner.h"
 #endif
 
-
+#define stringify( x ) stringify_literal( x )
+#define stringify_literal( x ) # x
 
 class TclBinding : public node::ObjectWrap {
 public:

@@ -135,6 +135,7 @@ Local<Value> TclToV8(Tcl_Interp* interp, Tcl_Obj* objPtr) {
 			return Nan::New<String>(Tcl_GetString(objPtr)).ToLocalChecked();
 		}
 	}
+	return Nan::Undefined();
 }
 
 /* Maps ANY V8/Javascript object to its Tcl equivalent
