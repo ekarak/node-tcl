@@ -19,25 +19,25 @@ describe( 'TclBinding', function () {
 			} catch ( e ) {
 				result = e;
 			}
-			expect( result == 64 );
+			expect( result ).to.equal( 64 );
 		} );
 
 		it( 'should properly handle errors thrown from JS', function () {
 			var result;
- 
+
 			try {
 				tclb.expose( 'puke', function() { throw "Danger!"; } );
-				result = tclb.cmdSync( 'if {[catch puke msg]} {return puked}' );	
+				result = tclb.cmdSync( 'if {[catch puke msg]} {return puked}' );
 			} catch ( e ) {
 				result = e;
 			}
-			
-			expect( result == 'puked' );
+
+			expect( result ).to.equal( 'puked' );
 		} );
 
 		it( 'should properly propagate errors thrown from JS', function () {
 			var result;
-			
+
 			try {
 				tclb.cmdSync( 'puke' );
 			} catch ( e ) {

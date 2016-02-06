@@ -18,7 +18,7 @@ public:
 protected:
 
 	void HandleOKCallback();
-
+void HandleErrorCallback();
 
 private:
 

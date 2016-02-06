@@ -15,7 +15,7 @@ TclWorker::~TclWorker() {
 
 
 void TclWorker::HandleOKCallback() {
-
+	v8log("TclWorker::HandleOKCallback, callback=%lp\n", (void*) callback);
 	// stack-allocated handle scope
 	Nan::HandleScope scope;
 
@@ -25,15 +25,26 @@ void TclWorker::HandleOKCallback() {
 	};
 
 	callback->Call( 2, argv );
-	return;
+}
 
+void TclWorker::HandleErrorCallback() {
+	v8log("TclWorker::HandleErrorCallback, callback=%lp\n", (void*) callback);
+	// stack-allocated handle scope
+	Nan::HandleScope scope;
+
+	v8::Local< v8::Value > argv[] = {
+		Nan::New< v8::String >( _result ).ToLocalChecked(),
+		Nan::Null()
+	};
+
+	callback->Call( 2, argv );
 }
 
 
 void TclWorker::Execute() {
 	v8log("TclWorker::Execute() creating new v8::Isolate\n");
 	_isolate = newV8Isolate();
-	
+
 	// initialise a new Tcl interpreter for the thread
 	Tcl_Interp * interp = newTclInterp();
 

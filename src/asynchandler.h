@@ -22,7 +22,7 @@ public:
 protected:
 
 	void HandleOKCallback();
-
+void HandleErrorCallback();
 
 private:
 
@@ -36,4 +36,3 @@ private:
 };
 
 #endif /*! ASYNCHANDLER_H */
-

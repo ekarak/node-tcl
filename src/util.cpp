@@ -41,17 +41,16 @@ Tcl_Interp* newTclInterp() {
 Local<Value> TclToV8(Tcl_Interp* interp, Tcl_Obj* objPtr) {
 	assert(objPtr != NULL);
 	if ( objPtr->typePtr == NULL ) {
-		// simplest case: no type information from Tcl, trying brute force
-		long john;
-		double shot;
-		if (TCL_OK == Tcl_GetLongFromObj(interp, objPtr, &john)) {
-			return Local<Value>::Cast(Nan::New<Number>(john));
-		} else if (TCL_OK == Tcl_GetDoubleFromObj(interp, objPtr, &shot)) {
-			return Local<Value>::Cast(Nan::New<Number>(shot));
+		// simplest case: no type information from Tcl, we only have a string
+		char* strval = Tcl_GetString(objPtr);
+		char* p;
+		long converted = strtol(strval, &p, 10);
+		if (!*p) {
+			//v8log("no type pointer: numeric\n");
+			return Local<Value>::Cast(Nan::New<Number>(converted));
 		} else {
-			return Local<Value>::Cast(
-					Nan::New<String>(Tcl_GetString(objPtr)).ToLocalChecked()
-			);
+			//v8log("no type pointer: string\n");
+			return Local<Value>::Cast(Nan::New<String>(strval).ToLocalChecked());
 		}
 	} else { // we got type information
 		// =================================================
@@ -101,7 +100,9 @@ Local<Value> TclToV8(Tcl_Interp* interp, Tcl_Obj* objPtr) {
 				// add each item in the Tcl list into the V8 array
 				if (TCL_OK == Tcl_ListObjIndex(interp, objPtr, i, &listItem)) {
 					// recursive call: TODO: check for self-pointers
-					arr->Set(Nan::New<Integer>(i), TclToV8(interp, listItem));
+					//v8log("Tcl list: idx=%d item=%s\n", i, Tcl_GetString(listItem));
+					Local<Value> v = TclToV8(interp, listItem);
+					arr->Set(i, v);
 				}
 			}
 			return arr;
@@ -131,7 +132,7 @@ Local<Value> TclToV8(Tcl_Interp* interp, Tcl_Obj* objPtr) {
 		}
 		else {
 			v8log("TODO: TclToV8 %s\n", objPtr->typePtr->name);
-			//return nullptr;
+			return Nan::New<String>(Tcl_GetString(objPtr)).ToLocalChecked();
 		}
 	}
 }
@@ -237,4 +238,28 @@ void v8log(const char* format, ...) {
 	    fflush  (stderr);
 	}
     va_end(argptr);
+}
+
+char* V8ValueType(v8::Local<v8::Value> v) {
+	if (v->IsUndefined ()) return "Undefined";
+	if (v->IsExternal()) {
+		return "External";
+	}
+	// V8 Objects
+	if (v->IsObject()) {
+		if (v->IsArray())   return "Array";
+	 	if (v->IsBooleanObject()) return "BooleanObject";
+	 	if (v->IsDate()) return "Date";
+		if (v->IsFunction()) return "Function";
+		if (v->IsNumberObject()) return "NumberObject";
+		if (v->IsStringObject()) return "StringObject";
+		if (v->IsRegExp()) return "RegExp";
+		if (v->IsNativeError()) return "NativeError";
+	} else {
+		// Primitives
+		if (v->IsBoolean())	return "Boolean";
+		if (v->IsNumber()) return "Number";
+		if (v->IsString()) return "String";
+	}
+	return "";
 }

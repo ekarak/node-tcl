@@ -1,6 +1,6 @@
 
 #include "asynchandler.h"
-
+#include "util.h"
 
 AsyncHandler::AsyncHandler( Nan::Callback * callback )
 	: Nan::AsyncWorker( callback ), _notify( false ) {
@@ -14,7 +14,7 @@ AsyncHandler::~AsyncHandler() {
 
 
 void AsyncHandler::HandleOKCallback() {
-
+	v8log("AsyncHandler::HandleOKCallback, callback=%lp\n", (void*) callback);
 	// stack-allocated handle scope
 	Nan::HandleScope scope;
 
@@ -28,6 +28,19 @@ void AsyncHandler::HandleOKCallback() {
 
 }
 
+void AsyncHandler::HandleErrorCallback() {
+	v8log("AsyncHandler::HandleErrorCallback, callback=%lp\n", (void*) callback);
+	// stack-allocated handle scope
+	Nan::HandleScope scope;
+
+	v8::Local< v8::Value > argv[] = {
+		Nan::New< v8::String >( _data ).ToLocalChecked(),
+		Nan::Null()
+	};
+
+	callback->Call( 2, argv );
+	return;
+}
 
 void AsyncHandler::notify( const std::string &err, const std::string &data ) {
 
@@ -59,4 +72,3 @@ void AsyncHandler::Execute() {
 	}
 
 }
-

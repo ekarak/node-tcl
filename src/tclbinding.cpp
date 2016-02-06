@@ -67,7 +67,7 @@ void TclBinding::init( Local< Object > exports ) {
 
 	// set up custom Tcl Event Loop
 	NodeTclNotify::setup();
-	
+
 	// stack-allocated handle scope
 	Nan::HandleScope scope;
 
@@ -80,7 +80,6 @@ void TclBinding::init( Local< Object > exports ) {
 	Nan::SetPrototypeMethod( tpl, "cmd", cmd );
 	Nan::SetPrototypeMethod( tpl, "cmdSync", cmdSync );
 	Nan::SetPrototypeMethod( tpl, "queue", queue );
-	Nan::SetPrototypeMethod( tpl, "toArray", toArray );
 	Nan::SetPrototypeMethod( tpl, "expose", expose );
 
 	constructor.Reset( tpl->GetFunction() );
@@ -207,13 +206,13 @@ void TclBinding::cmdSync( const Nan::FunctionCallbackInfo< Value > &info ) {
 	}
 
 	// grab the result
+	v8log("Tcl_GetObjResult( interp == %lp )\n", (void*) binding->_interp);
 	Tcl_Obj * result = Tcl_GetObjResult( binding->_interp );
-
-	// return result as a string
-	const char * str_result = Tcl_GetString( result );
-	Local< String > r_string = Nan::New< String >( str_result ).ToLocalChecked();
-
-	info.GetReturnValue().Set( r_string );
+	if (result != nullptr) {
+		v8log("Tcl result: %s\n", Tcl_GetString(result));
+		Local<Value> resultV8 = TclToV8( binding->_interp, result );
+		info.GetReturnValue().Set( resultV8 );
+	}
 
 }
 
@@ -254,45 +253,6 @@ void TclBinding::queue( const Nan::FunctionCallbackInfo< Value > &info ) {
 #endif
 
 	info.GetReturnValue().Set( Nan::Undefined() );
-
-}
-
-
-void TclBinding::toArray( const Nan::FunctionCallbackInfo< Value > &info ) {
-
-	// validate input params
-	if ( info.Length() < 1 ) {
-		return info.GetReturnValue().Set( Nan::Undefined() );
-	}
-
-	if (! info[0]->IsString() ) {
-		return Nan::ThrowTypeError( "Input must be a string" );
-	}
-
-	TclBinding * binding = ObjectWrap::Unwrap< TclBinding >( info.Holder() );
-	Nan::Utf8String str( info[0] );
-
-	// create a Tcl string object
-	Tcl_Obj * obj = Tcl_NewStringObj( *str, strlen( *str ) );
-
-	int objc = 0;
-	Tcl_Obj **objv;
-
-	// attempt to parse as a Tcl list
-	if ( Tcl_ListObjGetElements( binding->_interp, obj, &objc, &objv ) == TCL_OK ) {
-
-		Local< Array > r_array = Nan::New< Array >( objc );
-
-		for ( int i = 0; i < objc; i++ ) {
-			r_array->Set( i, Nan::New< String >( Tcl_GetString( objv[i] ) ).ToLocalChecked() );
-		}
-
-		return info.GetReturnValue().Set( r_array );
-
-	}
-
-	// not a valid Tcl list
-	info.GetReturnValue().Set( Nan::Null() );
 
 }
 

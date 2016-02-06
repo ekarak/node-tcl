@@ -34,7 +34,7 @@ describe( 'Result', function () {
 
 
 	context( 'when converting a Tcl list to an Array', function () {
-
+/*
 		it( 'should check for internal Tcl binding', function () {
 			var result = new Result( 'data' );
 			var array  = result.toArray();
@@ -60,8 +60,7 @@ describe( 'Result', function () {
 			expect( array ).to.an.instanceof( Array );
 			expect( array ).to.eql( [ 'data' ] );
 		} );
-
+*/
 	} );
 
 } );
-

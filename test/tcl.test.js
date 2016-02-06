@@ -29,7 +29,8 @@ describe( 'tcl', function () {
 	} );
 
 
-	context( 'when executing a Tcl command asynchronously', function () {
+	context( 'when executing an async Tcl command', function () {
+
 		it( 'should return a response object', function ( done ) {
 			tcl.cmd( 'info nameofexecutable', function ( err, result ) {
 				var Result = require( '../lib/result' );
@@ -40,7 +41,7 @@ describe( 'tcl', function () {
 		} );
 
 		it( 'should return response data', function ( done ) {
-			tcl.cmd( 'info cmdcount', function ( err, result ) {
+			tcl.cmd( 'info tclversion', function ( err, result ) {
 				expect( err ).to.be.null;
 				expect( result.data() ).to.be.a( 'string' );
 				expect( isNaN( parseInt( result.data() ) ) ).to.be.false;
@@ -48,11 +49,10 @@ describe( 'tcl', function () {
 			} );
 		} );
 
-		it( 'should be possible to convert resonse data to an array', function ( done ) {
+		it( 'should be possible to convert response data to an array', function ( done ) {
 			tcl.eval( 'info commands', function ( err, result ) {
 				expect( err ).to.be.null;
-				expect( result.data() ).to.be.a( 'string' );
-				expect( result.toArray() ).to.be.an.instanceof( Array );
+				expect( result.data() ).to.be.an.instanceof( Array );
 				done();
 			} );
 		} );
@@ -89,7 +89,7 @@ describe( 'tcl', function () {
 		} );
 
 		it( 'should return response data', function () {
-			var result = tcl.cmdSync( 'info cmdcount' );
+			var result = tcl.cmdSync( 'info tclversion' );
 			expect( result.data() ).to.be.a( 'string' );
 			expect( isNaN( parseInt( result.data() ) ) ).to.be.false;
 		} );
@@ -108,7 +108,7 @@ describe( 'tcl', function () {
 
 		it( 'should be possible to use the method alias', function () {
 			var result = tcl.evalSync( 'info cmdcount' );
-			expect( result.data() ).to.be.a( 'string' );
+			expect( result.data() ).to.be.a( 'number' );
 			expect( isNaN( parseInt( result.data() ) ) ).to.be.false;
 
 			var err = null;
@@ -124,7 +124,7 @@ describe( 'tcl', function () {
 	} );
 
 
-	context( 'when using async queue to execute Tcl commands', function () {
+	context( 'when using async queue to execute Tcl commands', function ( done ) {
 
 		it( 'should return response data', function ( done ) {
 			tcl.queue( 'info cmdcount', function ( err, result ) {
@@ -230,4 +230,3 @@ describe( 'Tcl', function () {
 	} );
 
 } );
-

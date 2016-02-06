@@ -22,8 +22,9 @@ v8::Local<v8::Value> TclToV8(Tcl_Interp*, Tcl_Obj*);
 // convert any v8 Value to its Tcl equivalent
 Tcl_Obj* V8ToTcl(Tcl_Interp* interp, v8::Value* v8v);
 Tcl_Obj* V8ToTcl(Tcl_Interp* interp, v8::Local<v8::Value> v8v);
+char* V8ValueType(v8::Local<v8::Value> v);
 
-// init new Isolate and ENTER it
+// init new Isolate and enter it
 v8::Isolate* newV8Isolate();
 
 // generic logger
