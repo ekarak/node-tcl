@@ -20,6 +20,9 @@ using namespace v8;
 // initialise static vars
 Nan::Persistent< Function > TclBinding::constructor;
 
+Nan::AsyncResource *resource;
+Nan::CopyablePersistentTraits<v8::Object>::CopyablePersistent ctx_obj;
+
 TclBinding::TclBinding() {
 
 #if defined(HAS_CXX11) && defined(HAS_TCL_THREADS)
@@ -42,7 +45,7 @@ TclBinding::~TclBinding() {
 	Tcl_DeleteInterp( _interp );
 
 }
-
+/*
 class MallocArrayBufferAllocator : public ArrayBuffer::Allocator {
   public:
     virtual void* Allocate(size_t length) {
@@ -56,7 +59,7 @@ class MallocArrayBufferAllocator : public ArrayBuffer::Allocator {
         free(data);
     }
 };
-
+*/
 uv_lib_t tclso;
 void TclBinding::init( Local< Object > exports ) {
 
@@ -74,7 +77,7 @@ void TclBinding::init( Local< Object > exports ) {
 	/*
 	 * http://www.borisvanschooten.nl/blog/2014/06/23/typed-arrays-on-embedded-v8-2014-edition
 	 */
-	V8::SetArrayBufferAllocator(new MallocArrayBufferAllocator());
+	//V8::SetArrayBufferAllocator(new MallocArrayBufferAllocator());
 
 	// set up custom Tcl Event Loop
 	NodeTclNotify::setup();
@@ -107,9 +110,11 @@ void TclBinding::construct( const Nan::FunctionCallbackInfo< Value > &info ) {
 		const int argc = 1;
 		Local< Value > argv[ argc ] = { info[0] };
 		Local< Function > c = Nan::New< Function >( constructor );
-		return info.GetReturnValue().Set( c->NewInstance( argc, argv ) );
+		info.GetReturnValue().Set( Nan::NewInstance(c, argc, argv ).ToLocalChecked() );
 
 	}
+
+  ctx_obj = Nan::Persistent<Object>(info.This());
 
 	TclBinding * obj = new TclBinding();
 	obj->Wrap( info.This() );
@@ -273,7 +278,7 @@ void TclBinding::queue( const Nan::FunctionCallbackInfo< Value > &info ) {
 	Local< Value > argv[] = {
 			Nan::Error( Nan::New< String >( MSG_NO_THREAD_SUPPORT ).ToLocalChecked() )
 	};
-	callback->Call( 1, argv );
+	callback->Call( Nan::New(ctx_obj), 1, argv, resource);
 #endif
 
 	info.GetReturnValue().Set( Nan::Undefined() );

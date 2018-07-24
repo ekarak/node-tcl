@@ -156,7 +156,7 @@ Tcl_Obj* V8ToTcl(Tcl_Interp* interp, Value* v8v) {
 			to = Tcl_NewIntObj(v8v->Int32Value());
 		} else if (v8v->IsUint32()) {
 			to = Tcl_NewIntObj(v8v->Uint32Value());
-		} else if (v8v->IsFloat32x4()) {
+		} else /* if (v8v->IsFloat32x4()) */ {
 			to = Tcl_NewDoubleObj(v8v->NumberValue());
 		}
 		// ===================
@@ -200,11 +200,11 @@ Tcl_Obj* V8ToTcl(Tcl_Interp* interp, Local<Value> v8v) {
 	return V8ToTcl(interp, *v8v);
 }
 
-static void gc_begin(GCType type, GCCallbackFlags flags){
+static void gc_begin(v8::Isolate * isolate, GCType type, GCCallbackFlags flags){
   std::cout << "GC begins: " << type << std::endl;
 }
 
-static void gc_end(GCType type, GCCallbackFlags flags){
+static void gc_end(v8::Isolate * isolate, GCType type, GCCallbackFlags flags){
   std::cout << "GC ends: " << type << std::endl;
 }
 
@@ -212,12 +212,12 @@ static void gc_end(GCType type, GCCallbackFlags flags){
  * Get a new instance of the V8 Engine (so conveniently called an 'Isolate') and ENTER it.
  * Its the caller's responsibility to properly call Exit() and Dispose()
  */
-v8::Isolate* newV8Isolate() {
-	v8::Isolate* isolate = Isolate::New();
+v8::Isolate* newV8Isolate(const v8::Isolate::CreateParams &params) {
+	v8::Isolate* isolate = Isolate::New(params);
 	isolate->Enter();
 	// ekarak: add GC hints
-	V8::AddGCPrologueCallback(&gc_begin);
-	V8::AddGCEpilogueCallback(&gc_end);
+	Nan::AddGCPrologueCallback(&gc_begin);
+	Nan::AddGCEpilogueCallback(&gc_end);
 
 	return isolate;
 }
@@ -241,7 +241,7 @@ void v8log(const char* format, ...) {
     va_end(argptr);
 }
 
-char* V8ValueType(v8::Local<v8::Value> v) {
+const char* V8ValueType(v8::Local<v8::Value> v) {
 	if (v->IsUndefined ()) return "Undefined";
 	if (v->IsExternal()) {
 		return "External";
