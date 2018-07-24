@@ -27,6 +27,9 @@ const char* V8ValueType(v8::Local<v8::Value> v);
 // init new Isolate and enter it
 v8::Isolate* newV8Isolate();
 
+extern Nan::AsyncResource *resource;
+extern Nan::CopyablePersistentTraits<v8::Object>::CopyablePersistent ctx_obj;
+
 // generic logger
 void v8log(const char* format, ...);
 

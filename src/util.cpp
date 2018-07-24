@@ -190,7 +190,7 @@ Tcl_Obj* V8ToTcl(Tcl_Interp* interp, Value* v8v) {
 		// ===================
 	} else if (v8v->IsRegExp()) {
 		// ===================
-		// todo
+		// TODO: handle regular expressions
 		v8log("***V8ToTcl: TODO IsRegExp\n");
 	}
 	return to;

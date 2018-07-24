@@ -24,7 +24,7 @@ void TclWorker::HandleOKCallback() {
 		Nan::New< v8::String >( _result ).ToLocalChecked()
 	};
 
-	callback->Call( 2, argv );
+  callback->Call( Nan::New(ctx_obj), 2, argv, resource );
 }
 
 void TclWorker::HandleErrorCallback() {
@@ -37,7 +37,7 @@ void TclWorker::HandleErrorCallback() {
 		Nan::Null()
 	};
 
-	callback->Call( 2, argv );
+  callback->Call( Nan::New(ctx_obj), 2, argv, resource );
 }
 
 

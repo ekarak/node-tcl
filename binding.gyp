@@ -12,6 +12,7 @@
 			'sources': [
 				'src/tclbinding.cpp',
 				'src/tclnotifier.cpp',
+				'src/tclworker.cpp',
 				'src/expose.cpp',
 				'src/jsEval.cpp',
 				'src/util.cpp',

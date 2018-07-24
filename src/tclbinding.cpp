@@ -20,8 +20,7 @@ using namespace v8;
 // initialise static vars
 Nan::Persistent< Function > TclBinding::constructor;
 
-Nan::AsyncResource *resource;
-Nan::CopyablePersistentTraits<v8::Object>::CopyablePersistent ctx_obj;
+
 
 TclBinding::TclBinding() {
 
@@ -149,7 +148,7 @@ void TclBinding::cmd( const Nan::FunctionCallbackInfo< Value > &info ) {
 	Local< Value > argv[] = {
 			Nan::Error( Nan::New< String >( MSG_NO_TCL_THREADS ).ToLocalChecked() )
 	};
-	callback->Call( 1, argv );
+	callback->Call( Nan::New(ctx_obj), 1, argv, resource );
 #endif
 
 	info.GetReturnValue().Set( Nan::Undefined() );

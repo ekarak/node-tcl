@@ -146,7 +146,7 @@ void NodeTclNotify::SetTimer(CONST86 Tcl_Time* timePtr) {
 				timePtr, (float)timeout/(float)1000000);
 		uint64_t t1 = uv_hrtime(); // nanoseconds
 		//
-		if (abs(timer_next_firing - ((t1/1000) + timeout)) > TIMERDELTA) {
+		if (timer_next_firing - ((t1/1000) + timeout) > TIMERDELTA) {
 			//
 			if (timer_next_firing > 0) {
 				v8log("stopping previous timer\n");
